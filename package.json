@@ -1,0 +1,46 @@
+{
+  "name": "a11y-agent",
+  "version": "1.0.0",
+  "description": "AI-powered accessibility analysis and auto-fix agent",
+  "type": "module",
+  "bin": {
+    "a11y-agent": "./agent.js"
+  },
+  "scripts": {
+    "scan:url": "node agent.js --url",
+    "scan:local": "node agent.js --local",
+    "scan:github": "node agent.js --github",
+    "scan:zip": "node agent.js --zip",
+    "verify:determinism": "node scripts/verify-determinism.js --",
+    "resolve:template": "node scripts/resolve-template-files.js"
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.10.0",
+    "@babel/parser": "^7.29.7",
+    "@github/copilot-sdk": "^1.0.0",
+    "@jridgewell/trace-mapping": "^0.3.31",
+    "@playwright/mcp": "^0.0.28",
+    "adm-zip": "^0.5.16",
+    "chalk": "^5.3.0",
+    "chrome-launcher": "^1.1.2",
+    "commander": "^12.1.0",
+    "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
+    "lighthouse": "^12.0.0",
+    "openai": "^6.39.0",
+    "ora": "^8.0.1",
+    "pa11y": "^9.1.1",
+    "parse5": "^8.0.1",
+    "playwright": "^1.48.0",
+    "pngjs": "^7.0.0",
+    "postcss": "^8.5.15",
+    "postcss-less": "^6.0.0",
+    "postcss-safe-parser": "^7.0.1",
+    "postcss-scss": "^4.0.9",
+    "serve-handler": "^6.1.5",
+    "simple-git": "^3.26.0"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  }
+}
