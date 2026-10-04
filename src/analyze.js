@@ -974,7 +974,7 @@ function logClassificationBreakdown(allIssues, initiallyManualViolations) {
   }
 }
 
-export async function phase4_analyzeAndMap(axeResults, lhResult, pa11yResult, repoPath, sourceFileMap = null, keyboardResult = null, interactionResult = null, focusableActionResult = null, missingAltIssues = null) {
+export async function phase4_analyzeAndMap(axeResults, lhResult, pa11yResult, repoPath, sourceFileMap = null, keyboardResult = null, interactionResult = null, focusableActionResult = null, missingAltIssues = null, dropdownKeyboardResult = null) {
   const spinner = ora('Phase 4 · Merging results & mapping to source files...').start();
 
   let dynamicTemplates = null;
@@ -1083,6 +1083,27 @@ export async function phase4_analyzeAndMap(axeResults, lhResult, pa11yResult, re
     }
   }
 
+  if (dropdownKeyboardResult && !dropdownKeyboardResult.scanFailed) {
+    for (const issue of dropdownKeyboardResult.issues || []) {
+      unified.push({
+        // Prefix must not form a plugin signature with the rule id (e.g. "ddk-dropdown" contains Kendo's "k-dropdown").
+        id: `kbnav-${issue.ruleId}-${instanceCounter++}`,
+        ruleId: issue.ruleId,
+        source: 'dropdown-keyboard',
+        impact: issue.impact,
+        description: issue.description,
+        helpUrl: issue.helpUrl || null,
+        nodes: issue.nodes || [],
+        element: issue.element || '',
+        page: issue.page,
+        triggerSelector: issue.triggerSelector || null,
+        dialogSelector: issue.dialogSelector || null,
+        keysAttempted: issue.keysAttempted || null,
+        context: issue.context || null,
+      });
+    }
+  }
+
   if (Array.isArray(missingAltIssues) && missingAltIssues.length > 0) {
     for (const issue of missingAltIssues) {
       unified.push({
@@ -1100,7 +1121,7 @@ export async function phase4_analyzeAndMap(axeResults, lhResult, pa11yResult, re
   }
 
   // Deduplicate, preferring direct file/line evidence and stronger sources
-  const sourceRank = { axe: 4, keyboard: 4, 'focusable-action': 4, 'image-alt': 4, interaction: 3, pa11y: 3, lighthouse: 2 };
+  const sourceRank = { axe: 4, keyboard: 4, 'focusable-action': 4, 'dropdown-keyboard': 4, 'image-alt': 4, interaction: 3, pa11y: 3, lighthouse: 2 };
   const seen = new Map();
   const normalizeDedupeText = (value, maxLen = 280) => String(value || '')
     .replace(/\s+/g, ' ')

@@ -159,6 +159,77 @@ export const WCAG_CRITERIA = new Map([
     requirement: 'Elements with role="img" must have an accessible name.',
     technique: 'Use aria-label or aria-labelledby on the element with role="img".',
   }],
+  // Dropdown keyboard scan (Phase 3i)
+  ['dropdown-trigger-not-reachable', {
+    sc: '2.1.1 Keyboard (Level A)',
+    requirement: 'A dropdown trigger must be reachable with Tab and Shift+Tab.',
+    technique: 'Use a native <button>/<select>, or tabindex="0" on custom triggers.',
+  }],
+  ['dropdown-trigger-shift-tab-unreachable', {
+    sc: '2.1.1 Keyboard (Level A)',
+    requirement: 'A dropdown trigger must be reachable with Tab and Shift+Tab.',
+    technique: 'Avoid positive tabindex and focus-redirecting scripts so reverse order mirrors forward order.',
+  }],
+  ['dropdown-enter-not-activating', {
+    sc: '2.1.1 Keyboard (Level A)',
+    requirement: 'Enter must open the dropdown list.',
+    technique: 'APG menu button / listbox: handle Enter and Space on the trigger and set aria-expanded.',
+  }],
+  ['dropdown-space-not-activating', {
+    sc: '2.1.1 Keyboard (Level A)',
+    requirement: 'Space must open the dropdown list.',
+    technique: 'APG menu button / listbox: handle Enter and Space on the trigger and set aria-expanded.',
+  }],
+  ['combobox-arrow-down-not-opening', {
+    sc: '2.1.1 Keyboard (Level A)',
+    requirement: 'ArrowDown in a combobox must open its listbox popup.',
+    technique: 'APG combobox: ArrowDown opens the popup and moves to the first option.',
+  }],
+  ['dropdown-arrow-keys-not-supported', {
+    sc: '2.1.1 Keyboard (Level A)',
+    requirement: 'ArrowUp/ArrowDown must move between items of an open dropdown list.',
+    technique: 'Use a roving tabindex or aria-activedescendant on the focused trigger.',
+  }],
+  ['dropdown-items-in-tab-order', {
+    sc: '2.1.1 Keyboard (Level A)',
+    requirement: 'Dropdown items must be navigated with arrow keys, not Tab; Tab should leave the list.',
+    technique: 'Give items tabindex="-1" and move focus with the arrow keys.',
+  }],
+  ['dropdown-escape-not-closing', {
+    sc: '2.1.1 Keyboard (Level A)',
+    requirement: 'Escape must close an open dropdown list.',
+    technique: 'APG listbox / menu button: close the popup on Escape and set aria-expanded="false".',
+  }],
+  ['dropdown-focus-not-returned', {
+    sc: '2.4.3 Focus Order (Level A)',
+    requirement: 'When a dropdown list closes, focus must return to its trigger.',
+    technique: 'Call trigger.focus() when the popup closes.',
+  }],
+  ['interaction-keyboard-activation-failed', {
+    sc: '2.1.1 Keyboard (Level A)',
+    requirement: 'Content revealed by a mouse click must also be revealable from the keyboard.',
+    technique: 'Use a native <button>, or handle Enter and Space on the trigger the same way as click.',
+  }],
+  ['radio-group-arrow-keys-not-supported', {
+    sc: '2.1.1 Keyboard (Level A)',
+    requirement: 'Arrow keys must move between radio buttons in a group, including inside dialogs.',
+    technique: 'Native radios sharing a name, or an APG radio group with roving tabindex.',
+  }],
+  ['radio-group-items-in-tab-order', {
+    sc: '2.1.1 Keyboard (Level A)',
+    requirement: 'A radio group must be a single Tab stop.',
+    technique: 'Only the checked (or first) radio has tabindex="0"; the rest have tabindex="-1".',
+  }],
+  ['focus-order-not-visual', {
+    sc: '2.4.3 Focus Order (Level A)',
+    requirement: 'Focus order must follow the visual reading order (top-to-bottom, left-to-right).',
+    technique: 'Match DOM order to visual order; avoid positive tabindex and CSS reordering.',
+  }],
+  ['focus-order-skipped', {
+    sc: '2.4.3 Focus Order (Level A)',
+    requirement: 'Focus must not skip an element and return to it later.',
+    technique: 'Match DOM order to visual order; avoid positive tabindex and CSS reordering.',
+  }],
 ]);
 
 export function getWcagCriteriaForRule(ruleId) {

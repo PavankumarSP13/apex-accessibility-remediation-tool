@@ -380,7 +380,7 @@ export function buildHTML({ before, after, analysis, fixes, judgment, verificati
     (a, b) => impactRank(a.impact) - impactRank(b.impact)
   );
   const IMPACT_COLOR  = { critical:'#dc2626', serious:'#ea580c', moderate:'#d97706', minor:'#16a34a' };
-  const SOURCE_COLOR  = { 'axe':'#2563eb', 'lighthouse':'#7c3aed', 'pa11y':'#d97706', 'keyboard':'#059669', 'image-alt':'#dc2626', 'focusable-action':'#0891b2' };
+  const SOURCE_COLOR  = { 'axe':'#2563eb', 'lighthouse':'#7c3aed', 'pa11y':'#d97706', 'keyboard':'#059669', 'image-alt':'#dc2626', 'focusable-action':'#0891b2', 'dropdown-keyboard':'#be185d' };
   const badge  = (impact) =>
     `<span style="background:${IMPACT_COLOR[impact]??'#6b7280'};color:#fff;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600">${impact}</span>`;
   const srcBadge = (src) =>

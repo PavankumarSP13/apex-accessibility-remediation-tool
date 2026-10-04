@@ -221,7 +221,7 @@ async function collectMutations(page) {
  * Detect if a dialog/modal is now open in the page.
  * Returns { found: boolean, selector: string|null }
  */
-async function detectOpenDialog(page) {
+export async function detectOpenDialog(page) {
   return page.evaluate(() => {
     // 1. role=dialog or role=alertdialog that is visible
     for (const el of document.querySelectorAll('[role="dialog"],[role="alertdialog"]')) {
