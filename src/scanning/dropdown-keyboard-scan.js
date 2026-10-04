@@ -725,6 +725,11 @@ async function findDialogTriggerCandidates(page) {
       const ids = el.getAttribute('aria-controls').split(/\s+/);
       if (ids.some(id => isDialog(document.getElementById(id)))) add(el, 'aria-controls');
     });
+    // In-page links that point at a dialog, e.g. <a href="#help-dialog">Need help?</a>
+    document.querySelectorAll('a[href^="#"]').forEach(el => {
+      const id = decodeURIComponent(el.getAttribute('href').slice(1));
+      if (id && isDialog(document.getElementById(id))) add(el, 'href');
+    });
     document.querySelectorAll('button, [role="button"], input[type="button"]').forEach(el => {
       if (el.closest('[role="dialog"], [role="alertdialog"], dialog')) return;
       add(el, 'generic');
@@ -736,6 +741,8 @@ async function findDialogTriggerCandidates(page) {
 
 /** Open a dialog from its trigger (keyboard first, click as fallback). Returns null if no dialog opened. */
 async function openDialogFromTrigger(page, trigger, baseUrl) {
+  // A dialog already showing was not opened by this trigger (the page walk covers it).
+  if ((await detectOpenDialog(page)).found) return null;
   const handle = await elementAt(page, trigger.path);
   if (!handle) return null;
   try {
@@ -746,15 +753,20 @@ async function openDialogFromTrigger(page, trigger, baseUrl) {
         await page.keyboard.press(key);
       }
       await page.waitForTimeout(SETTLE_MS * 2);
-      if (page.url() !== baseUrl) return { navigated: true };
+      // Check for a dialog before treating a URL change as navigation: "#dialog" links and
+      // :target-styled dialogs change only the hash.
       const state = await detectOpenDialog(page);
-      if (!state.found) continue;
+      if (!state.found) {
+        if (page.url() !== baseUrl) return { navigated: true };
+        continue;
+      }
       const info = await page.evaluate((sel) => {
         const el = document.querySelector(sel);
         if (!el) return null;
         return { path: window.__ddk.domPath(el), selector: sel, fingerprint: `${sel}|${el.outerHTML.slice(0, 120)}` };
       }, state.selector).catch(() => null);
-      if (info) return { ...info, openedBy: key };
+      if (info) return { ...info, openedBy: key, url: page.url() };
+      if (page.url() !== baseUrl) return { navigated: true };
     }
     return null;
   } finally {
@@ -821,6 +833,7 @@ export async function phase3i_dropdownKeyboard(scanUrl) {
       seenDialogs.add(dialog.fingerprint);
       stats.dialogs++;
 
+      // The dialog's own URL is the baseline (opening it may have changed the hash).
       const dialogScope = {
         page,
         scanUrl,
@@ -828,8 +841,8 @@ export async function phase3i_dropdownKeyboard(scanUrl) {
         containerPath: dialog.path,
         dialogSelector: dialog.selector,
         triggerSelector: trigger.selector,
+        baseUrl: dialog.url,
       };
-      Object.defineProperty(dialogScope, 'baseUrl', { get: () => baseUrl });
       dialogScope.prepare = async () => {
         await loadFresh();
         const reopened = await openDialogFromTrigger(page, trigger, baseUrl);
@@ -838,6 +851,7 @@ export async function phase3i_dropdownKeyboard(scanUrl) {
           throw new Error('dialog could not be reopened');
         }
         dialogScope.containerPath = reopened.path;
+        dialogScope.baseUrl = reopened.url;
       };
       try {
         await auditScope(dialogScope, issues, goodToHave, stats);
