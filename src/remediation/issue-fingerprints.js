@@ -110,12 +110,26 @@ export function normalizeInteractionScanIssues(interactionResult = {}) {
   }));
 }
 
+export function normalizeDropdownKeyboardScanIssues(dropdownKeyboardResult = {}) {
+  if (dropdownKeyboardResult?.scanFailed === true) return [];
+  return (dropdownKeyboardResult?.issues || []).map(issue => ({
+    source: 'dropdown-keyboard',
+    page: issue.page || '',
+    ruleId: issue.ruleId || 'dropdown-keyboard-unknown',
+    impact: issue.impact || 'serious',
+    description: issue.description || '',
+    element: issue.element || '',
+    nodes: issue.nodes || [{ html: issue.element || '', target: '' }],
+  }));
+}
+
 export function normalizeScanIssues(scanData = {}, { includeLighthouse = true, filterManual = false } = {}) {
   const issues = [
     ...normalizeAxeScanIssues(scanData?.axe || []),
     ...normalizePa11yScanIssues(scanData?.pa11y || {}),
     ...normalizeKeyboardScanIssues(scanData?.keyboard || {}),
     ...normalizeInteractionScanIssues(scanData?.interaction || {}),
+    ...normalizeDropdownKeyboardScanIssues(scanData?.dropdownKeyboard || {}),
   ];
   if (includeLighthouse) {
     issues.push(...normalizeLighthouseIssues(scanData?.lh || {}, scanData?.scanUrl || ''));

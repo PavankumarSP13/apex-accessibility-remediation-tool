@@ -138,8 +138,9 @@ function getActivationKeys(tag, role, inputType) {
   // Native <button> — Enter and Space (same as role=button)
   if (t === 'button') return ['Enter', 'Space'];
 
-  // Native <select> — Space or Enter opens the dropdown
-  if (t === 'select') return ['Space', 'Enter'];
+  // Native <select> — the browser provides Space/Enter/arrow handling, and its popup is
+  // drawn outside the DOM, so pressing keys leaves no observable change. Skip it.
+  if (t === 'select') return null;
 
   // Native checkboxes/radios
   if (t === 'input' && it === 'checkbox') return ['Space'];
@@ -218,10 +219,50 @@ async function collectMutations(page) {
 }
 
 /**
+ * Arm a per-element probe: a window flag that disappears if the page reloads, and a
+ * flag set by any form submit/invalid event. Submitting a form that posts back to the
+ * same URL reloads the page without changing location.href or the DOM shape.
+ */
+async function armActivationProbe(page) {
+  await page.evaluate(() => {
+    window.__fa11yAlive = true;
+    window.__fa11yFormEvent = false;
+    if (!window.__fa11yFormListeners) {
+      window.__fa11yFormListeners = true;
+      const mark = () => { window.__fa11yFormEvent = true; };
+      document.addEventListener('submit', mark, true);
+      document.addEventListener('invalid', mark, true);
+    }
+  }).catch(() => {});
+}
+
+async function readActivationProbe(page) {
+  return page.evaluate(() => ({ alive: window.__fa11yAlive === true, formEvent: window.__fa11yFormEvent === true }))
+    .catch(() => ({ alive: false, formEvent: false })); // context destroyed mid-navigation
+}
+
+/**
+ * After a reload or goBack, focus starts at the top of the page again; without this the
+ * next Tab revisits earlier elements and the cycle detector ends the scan early.
+ */
+async function restoreFocusAfterReload(page, elementDomPath) {
+  await page.waitForLoadState('load', { timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(SETTLE_MS);
+  await page.evaluate((p) => {
+    let node = document.body;
+    for (const i of String(p).split('>')) {
+      node = node?.children[Number(i)];
+      if (!node) return;
+    }
+    node.focus();
+  }, elementDomPath).catch(() => {});
+}
+
+/**
  * Detect if a dialog/modal is now open in the page.
  * Returns { found: boolean, selector: string|null }
  */
-async function detectOpenDialog(page) {
+export async function detectOpenDialog(page) {
   return page.evaluate(() => {
     // 1. role=dialog or role=alertdialog that is visible
     for (const el of document.querySelectorAll('[role="dialog"],[role="alertdialog"]')) {
@@ -616,8 +657,9 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
       // Snapshot state before activation
       const urlBefore = elInfo.urlBefore;
 
-      // Inject MutationObserver
+      // Inject MutationObserver and the reload / form-submit probe
       await injectMutationObserver(page);
+      await armActivationProbe(page);
 
       // Try each key in order — stop at first one that produces a change
       let activated = false;
@@ -625,6 +667,18 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
       for (const key of keys) {
         await page.keyboard.press(key);
         await page.waitForTimeout(SETTLE_MS);
+
+        // Form submitted (or blocked by validation), or the page reloaded in place.
+        const probe = await readActivationProbe(page);
+        if (!probe.alive) {
+          await restoreFocusAfterReload(page, elInfo.domPath);
+          activated = true;
+          break;
+        }
+        if (probe.formEvent) {
+          activated = true;
+          break;
+        }
 
         const afterState = await page.evaluate(() => ({
           url: location.href,
@@ -638,17 +692,15 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
           await page.goBack({ waitUntil: 'load', timeout: 10000 }).catch(async () => {
             await page.goto(scanUrl, { waitUntil: 'load', timeout: 15000 }).catch(() => {});
           });
-          await page.waitForTimeout(SETTLE_MS);
+          await restoreFocusAfterReload(page, elInfo.domPath);
           activated = true;
           break;
         }
 
-        // Check for checkbox/radio toggle
+        // Check for checkbox/radio toggle. Read state from the focused node itself:
+        // a selector such as "input" would match a different (e.g. hidden) input first.
         if (elInfo.isCheckbox || elInfo.isRadio) {
-          const nowChecked = await page.evaluate((sel) => {
-            const el = document.querySelector(sel);
-            return el ? el.checked : null;
-          }, elInfo.selector).catch(() => null);
+          const nowChecked = await activeHandle.evaluate(el => el.checked).catch(() => null);
           if (nowChecked !== null && nowChecked !== elInfo.checkedBefore) {
             activated = true;
             // Restore original state
@@ -704,6 +756,11 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
         await injectMutationObserver(page);
       }
 
+      // A form submit can reload the page a moment after the submit event fired.
+      if (activated && !(await readActivationProbe(page)).alive) {
+        await restoreFocusAfterReload(page, elInfo.domPath);
+      }
+
       // Cleanup observer if not already collected
       await page.evaluate(() => {
         if (window.__fa11yObs) window.__fa11yObs.disconnect();
@@ -718,22 +775,30 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
       // so we always click the exact focused element, not the first element
       // matching a CSS selector (which may be completely different on any site).
       if (!activated && !navigated) {
+        let clickWorked = false;
         try {
           const urlBefore2 = await page.evaluate(() => location.href);
           await injectMutationObserver(page);
+          await armActivationProbe(page);
           await activeHandle.click({ timeout: 2000 }).catch(() => {});
           await page.waitForTimeout(SETTLE_MS);
 
+          const clickProbe = await readActivationProbe(page);
           const urlAfter2 = await page.evaluate(() => location.href).catch(() => urlBefore2);
-          if (urlAfter2 !== urlBefore2) {
-            // Click navigated — go back, skip dialog scan
-            await page.goBack({ waitUntil: 'load', timeout: 10000 }).catch(async () => {
-              await page.goto(scanUrl, { waitUntil: 'load', timeout: 15000 }).catch(() => {});
-            });
+          if (!clickProbe.alive || clickProbe.formEvent || urlAfter2 !== urlBefore2) {
+            clickWorked = true;
+            if (urlAfter2 !== urlBefore2) {
+              // Click navigated — go back, skip dialog scan
+              await page.goBack({ waitUntil: 'load', timeout: 10000 }).catch(async () => {
+                await page.goto(scanUrl, { waitUntil: 'load', timeout: 15000 }).catch(() => {});
+              });
+            }
+            if (!(await readActivationProbe(page)).alive) await restoreFocusAfterReload(page, elInfo.domPath);
           } else {
             const clickMutations = await collectMutations(page);
             const clickElementCount = await page.evaluate(() => document.querySelectorAll('*').length);
             if (clickMutations.length > 0 || clickElementCount !== elInfo.elementCountBefore) {
+              clickWorked = true;
               const dialogState = await detectOpenDialog(page);
               if (dialogState.found) {
                 dialogCount++;
@@ -776,13 +841,15 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
           }).catch(() => {});
         }
 
-        // Always flag the keyboard-activation failure regardless of click result
+        // Always flag the keyboard-activation failure; the wording says whether a mouse click helped.
         noActionCount++;
         issues.push({
           ruleId: 'focusable-no-action',
           source: 'focusable-action',
           impact: 'serious',
-          description: `Focusable element does nothing when activated with keyboard (tried: ${keys.join(', ')}). Only responds to mouse click.`,
+          description: clickWorked
+            ? `Focusable element does nothing when activated with keyboard (tried: ${keys.join(', ')}). Only responds to mouse click.`
+            : `Focusable element does nothing when activated with keyboard (tried: ${keys.join(', ')}) or mouse click. Give it an action, or remove it from the Tab order if it is not interactive.`,
           nodes: [{ html: elInfo.html, target: elInfo.selector }],
           element: elInfo.html,
           page: scanUrl,
