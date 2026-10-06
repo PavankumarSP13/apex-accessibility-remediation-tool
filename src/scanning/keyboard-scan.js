@@ -125,8 +125,15 @@ async function detectSkipLink(page) {
 }
 
 async function traceFocusOrder(page) {
-  // Reset focus to body
-  await page.evaluate(() => document.body.focus());
+  // Reset focus to the start of the document. <body> only accepts focus with a tabindex,
+  // so a plain body.focus() is a no-op and the walk would resume after the skip-link probe.
+  await page.evaluate(() => {
+    const body = document.body;
+    const hadTabindex = body.hasAttribute('tabindex');
+    if (!hadTabindex) body.setAttribute('tabindex', '-1');
+    body.focus();
+    if (!hadTabindex) body.removeAttribute('tabindex');
+  });
   const trace = [];
   const startTime = Date.now();
   const TRACE_TIMEOUT_MS = 30000; // 30 second hard cap
@@ -150,14 +157,29 @@ async function traceFocusOrder(page) {
           .slice(0, 60);
       }
 
-      const accessibleName = el.getAttribute('aria-label') || labelledByText || el.title
-        || el.getAttribute('alt') || (el.textContent || '').trim().slice(0, 60) || '';
-      const accessibleNameSource = el.getAttribute('aria-label') ? 'aria-label'
-        : labelledByText ? 'aria-labelledby'
-        : el.title ? 'title'
-        : el.getAttribute('alt') ? 'alt'
-        : (el.textContent || '').trim() ? 'contents'
-        : 'none';
+      // Associated <label for> or wrapping <label> — the usual name source for form fields.
+      const labelText = [...(el.labels || [])]
+        .map(label => (label.textContent || '').trim())
+        .filter(Boolean)
+        .join(' ')
+        .slice(0, 60);
+
+      // <input type="button|submit|reset"> are named by their value; submit/reset have a browser default.
+      const inputType = el.tagName === 'INPUT' ? (el.type || '').toLowerCase() : '';
+      const buttonValue = ['button', 'submit', 'reset'].includes(inputType)
+        ? (el.value || '').trim() || (inputType === 'button' ? '' : inputType)
+        : '';
+
+      const nameSources = [
+        ['aria-label', (el.getAttribute('aria-label') || '').trim()],
+        ['aria-labelledby', labelledByText],
+        ['label', labelText],
+        ['value', buttonValue],
+        ['title', (el.title || '').trim()],
+        ['alt', (el.getAttribute('alt') || '').trim()],
+        ['contents', (el.textContent || '').trim().slice(0, 60)],
+      ];
+      const [accessibleNameSource, accessibleName] = nameSources.find(([, text]) => text) || ['none', ''];
 
       return {
         tag: el.tagName.toLowerCase(),
@@ -165,11 +187,20 @@ async function traceFocusOrder(page) {
         accessibleName,
         accessibleNameSource,
         selector: buildSelector(el),
+        path: domPath(el),
         html: el.outerHTML.slice(0, 200),
         visible: rect.width > 0 && rect.height > 0,
         x: rect.x,
         y: rect.y,
       };
+
+      function domPath(element) {
+        const parts = [];
+        for (let node = element; node && node.parentElement; node = node.parentElement) {
+          parts.unshift([...node.parentElement.children].indexOf(node));
+        }
+        return parts.join('>');
+      }
 
       function buildSelector(element) {
         if (element.id) return `#${element.id}`;
@@ -254,9 +285,24 @@ async function detectMissingFocusIndicators(page, focusTrace) {
 }
 
 async function detectUnreachableElements(page, focusTrace) {
-  const reachedSelectors = new Set(focusTrace.map(t => t.selector));
+  // Match by DOM path: weak selectors like "input" would let one reached input mask every other.
+  const reachedPaths = new Set(focusTrace.map(t => t.path));
 
   const interactiveElements = await page.evaluate(() => {
+    const domPath = (element) => {
+      const parts = [];
+      for (let node = element; node && node.parentElement; node = node.parentElement) {
+        parts.unshift([...node.parentElement.children].indexOf(node));
+      }
+      return parts.join('>');
+    };
+    // Members of a single-Tab-stop group: native radios sharing a name, or items of a
+    // roving-tabindex composite widget. Reaching any member reaches the group.
+    const groupKey = (el) => {
+      if (el.matches('input[type="radio"]') && el.name) return `radio:${el.form ? domPath(el.form) : ''}|${el.name}`;
+      const composite = el.closest('[role="radiogroup"], [role="tablist"], [role="listbox"], [role="menu"], [role="menubar"], [role="tree"], [role="grid"], [role="toolbar"]');
+      return composite && composite !== el ? `composite:${domPath(composite)}` : null;
+    };
     // Include ARIA-role interactive elements and onclick divs/spans that have no tabindex
     // (these are keyboard-inaccessible by design flaw — they should be flagged)
     const elements = document.querySelectorAll(
@@ -288,6 +334,8 @@ async function detectUnreachableElements(page, focusTrace) {
 
       results.push({
         selector,
+        path: domPath(el),
+        group: groupKey(el),
         html: el.outerHTML.slice(0, 200),
         tag: el.tagName.toLowerCase(),
         role: el.getAttribute('role') || '',
@@ -298,8 +346,12 @@ async function detectUnreachableElements(page, focusTrace) {
     return results;
   });
 
+  const reachedGroups = new Set(interactiveElements
+    .filter(el => el.group && reachedPaths.has(el.path))
+    .map(el => el.group));
+
   return interactiveElements
-    .filter(el => !reachedSelectors.has(el.selector))
+    .filter(el => !reachedPaths.has(el.path) && !(el.group && reachedGroups.has(el.group)))
     .slice(0, 30);
 }
 
