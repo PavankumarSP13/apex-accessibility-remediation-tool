@@ -200,6 +200,11 @@ export const WCAG_CRITERIA = new Map([
     requirement: 'Escape must close an open dropdown list.',
     technique: 'APG listbox / menu button: close the popup on Escape and set aria-expanded="false".',
   }],
+  ['dropdown-selection-not-closing', {
+    sc: '2.1.1 Keyboard (Level A)',
+    requirement: 'Choosing an item with Enter, or leaving with Tab, must close the dropdown list.',
+    technique: 'APG listbox / combobox: close the popup and set aria-expanded="false" on selection and on Tab.',
+  }],
   ['dropdown-focus-not-returned', {
     sc: '2.4.3 Focus Order (Level A)',
     requirement: 'When a dropdown list closes, focus must return to its trigger.',

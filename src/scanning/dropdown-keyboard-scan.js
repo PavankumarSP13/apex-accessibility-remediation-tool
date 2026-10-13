@@ -603,6 +603,44 @@ async function auditDropdown(scope, dd, walk, issues, goodToHave) {
     }
   }
 
+  // 10. Choosing an item (Enter) or leaving with Tab closes the list instead of leaving it open.
+  const keptOpenBy = [];
+  if (downWorks) {
+    await closeAndRestore(scope, dd, before);
+    ({ opened, before, navigated } = await openForTesting());
+    if (navigated) { await scope.prepare(); return 'navigated'; }
+    if (opened) {
+      if ((await active()).index < 0) await press(page, 'ArrowDown');
+      await press(page, 'Enter');
+      if (page.url() !== scope.baseUrl) { await scope.prepare(); return 'navigated'; }
+      const afterEnter = await findOpenPopup(page, dd.path, before);
+      if (afterEnter && !afterEnter.expandedOnly) keptOpenBy.push('Enter');
+    }
+  }
+  await closeAndRestore(scope, dd, before);
+  ({ opened, before, navigated } = await openForTesting());
+  if (navigated) { await scope.prepare(); return 'navigated'; }
+  if (opened && opened.popupPath) {
+    await press(page, 'Tab');
+    const focusLeft = await page.evaluate(({ pPath, tPath }) => {
+      const { resolve } = window.__ddk;
+      const el = document.activeElement;
+      if (!el || el === document.body) return false;
+      return el !== resolve(tPath) && !resolve(pPath)?.contains(el);
+    }, { pPath: opened.popupPath, tPath: dd.path }).catch(() => false);
+    // Focus still inside the list is the Tab-order problem from step 9, not a list left open.
+    if (focusLeft) {
+      const afterTab = await findOpenPopup(page, dd.path, before);
+      if (afterTab && !afterTab.expandedOnly) keptOpenBy.push('Tab');
+    }
+  }
+  if (keptOpenBy.length) {
+    issues.push(makeIssue(scope, 'dropdown-selection-not-closing', 'serious',
+      `The dropdown list of <${dd.tag}> stays open after ${keptOpenBy.map(k => k === 'Enter' ? 'Enter selects an item' : 'Tab moves focus out of it').join(' and after ')}.`,
+      dd, 'Close the popup (aria-expanded="false") when an item is chosen with Enter or a click, keeping focus on the trigger, and when focus leaves with Tab.',
+      dd.editable ? APG_HELP.combobox : APG_HELP.dropdown, { keysAttempted: keptOpenBy }));
+  }
+
   await closeAndRestore(scope, dd, before);
   return 'tested';
 }
