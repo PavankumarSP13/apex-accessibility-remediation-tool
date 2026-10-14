@@ -66,21 +66,21 @@
             </div>
           </div>
 
-          <div class="field">
+         <div class="field">
             <p class="group-title">Best way to reach you</p>
-            <div class="radio-group">
-              <label><input type="radio" name="contact" value="email" />Email</label>
-              <label><input type="radio" name="contact" value="phone" />Phone</label>
-              <label><input type="radio" name="contact" value="chat" />Chat</label>
+            <div class="radio-group" role="radiogroup" aria-label="Best way to reach you">
+              <div class="custom-radio" role="radio" aria-checked="false" aria-label="Email" tabindex="0"><span class="radio-mark"></span>Email</div>
+              <div class="custom-radio" role="radio" aria-checked="false" aria-label="Phone" tabindex="0"><span class="radio-mark"></span>Phone</div>
+              <div class="custom-radio" role="radio" aria-checked="false" aria-label="Chat" tabindex="0"><span class="radio-mark"></span>Chat</div>
             </div>
           </div>
 
           <div class="field custom-radio-block">
             <p class="group-title">How would you like to receive updates?</p>
-            <div class="radio-group">
-              <span><input type="radio" name="updates" value="daily" />Daily</span>
-              <span><input type="radio" name="updates" value="weekly" />Weekly</span>
-              <span><input type="radio" name="updates" value="monthly" />Monthly</span>
+            <div class="radio-group" role="radiogroup" aria-label="Update frequency">
+              <div class="custom-radio" role="radio" aria-checked="false" aria-label="Daily" tabindex="0"><span class="radio-mark"></span>Daily</div>
+              <div class="custom-radio" role="radio" aria-checked="false" aria-label="Weekly" tabindex="0"><span class="radio-mark"></span>Weekly</div>
+              <div class="custom-radio" role="radio" aria-checked="false" aria-label="Monthly" tabindex="0"><span class="radio-mark"></span>Monthly</div>
             </div>
           </div>
 
@@ -295,6 +295,15 @@
         if (!dropdown.contains(event.target)) {
           setDropdownOpen(false);
         }
+      });
+            document.querySelectorAll('.radio-group').forEach(function (group) {
+        group.querySelectorAll('.custom-radio').forEach(function (radio) {
+          radio.addEventListener('click', function () {
+            group.querySelectorAll('.custom-radio').forEach(function (option) {
+              option.setAttribute('aria-checked', option === radio ? 'true' : 'false');
+            });
+          });
+        });
       });
     </script>
   </body>
