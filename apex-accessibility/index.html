@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TextStack AI Support Portal</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero-image-wrap">
+          <img src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=800&q=80" alt="" />
+        </div>
+      </header>
+
+      <main class="support-card">
+        <h1>TextStack AI support portal</h1>
+        <p class="subtitle">This intake form is used to test the AI accessibility remediation workflow against local demo content.</p>
+
+        <form class="demo-form" action="#" method="post">
+          <input type="hidden" name="sessionid" value="demo-123" />
+
+          <!-- <div class="field">
+            <label for="team-select">Choose a support team</label>
+            <select id="team-select" aria-label="Support team">
+              <option>Customer Success</option>
+              <option>Engineering</option>
+              <option>Billing</option>
+            </select>
+          </div> -->
+
+          <div class="field">
+            <p class="group-title" id="priority-label">Choose a priority</p>
+            <div class="custom-dropdown" id="priority-dropdown">
+              <div
+                class="custom-dropdown-toggle"
+                id="priority-toggle"
+                role="combobox"
+                tabindex="0"
+                aria-haspopup="listbox"
+                aria-expanded="false"
+                aria-controls="priority-listbox"
+                aria-labelledby="priority-label priority-toggle"
+              >
+                <span class="custom-dropdown-value">Select priority</span>
+              </div>
+              <ul class="custom-dropdown-list" id="priority-listbox" role="listbox" aria-labelledby="priority-label" tabindex="-1">
+                <li id="priority-opt-low" role="option" aria-selected="false" data-value="low">Low</li>
+                <li id="priority-opt-medium" role="option" aria-selected="false" data-value="medium">Medium</li>
+                <li id="priority-opt-high" role="option" aria-selected="false" data-value="high">High</li>
+                <li id="priority-opt-urgent" role="option" aria-selected="false" data-value="urgent">Urgent</li>
+                <li id="priority-opt-critical" role="option" aria-selected="false" data-value="critical">Critical</li>
+                <li id="priority-opt-blocker" role="option" aria-selected="false" data-value="blocker">Blocker</li>
+              </ul>
+              <input type="hidden" name="priority" id="priority-input" value="" />
+            </div>
+          </div>
+
+          <div class="field">
+            <p class="group-title">Tell us what is urgent</p>
+            <div class="checkbox-group">
+              <label><input type="checkbox" name="urgent" value="urgent" />Urgent issue</label>
+              <label><input type="checkbox" name="security" value="security" />Security review</label>
+              <label><input type="checkbox" name="training" value="training" />Training request</label>
+            </div>
+          </div>
+
+          <div class="field">
+            <p class="group-title">Best way to reach you</p>
+            <div class="radio-group">
+              <label><input type="radio" name="contact" value="email" />Email</label>
+              <label><input type="radio" name="contact" value="phone" />Phone</label>
+              <label><input type="radio" name="contact" value="chat" />Chat</label>
+            </div>
+          </div>
+
+          <div class="field custom-radio-block">
+            <p class="group-title">How would you like to receive updates?</p>
+            <div class="radio-group">
+              <span><input type="radio" name="updates" value="daily" />Daily</span>
+              <span><input type="radio" name="updates" value="weekly" />Weekly</span>
+              <span><input type="radio" name="updates" value="monthly" />Monthly</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="customer-name">Customer name</label>
+            <input id="customer-name" type="text" value="" placeholder="Name" />
+          </div>
+
+          <div class="field">
+            <label for="customer-email">Email address</label>
+            <input id="customer-email" type="email" value="" placeholder="you@example.com" />
+          </div>
+
+          <div class="field">
+            <label for="attachments">Attachment</label>
+            <input type="file" id="attachments" />
+          </div>
+
+          <div class="field">
+            <label for="message">Message</label>
+            <textarea id="message" placeholder="Type your request here...">The form is intentionally missing some accessibility features so the remediation tool can identify them.</textarea>
+          </div>
+
+          <div class="field">
+            <label for="company-url">Website</label>
+            <input id="company-url" type="text" value="" placeholder="https://" />
+          </div>
+
+          <div class="actions-row">
+            <button class="primary-btn" type="submit">Submit request</button>
+            <button class="secondary-btn" type="button"></button>
+            <button class="secondary-btn icon-btn" type="button" aria-label="Close dialog">X</button>
+          </div>
+
+          <div class="help-row">
+            <a class="assist-link" href="#dialog-help" id="help-link">Need help?</a>
+            <a class="assist-link muted-link" href="#">Contact support</a>
+          </div>
+
+          <p class="note">Demo: this page is intentionally under-accessible.</p>
+        </form>
+      </main>
+    </div>
+
+    <div id="dialog-help" role="dialog" aria-modal="false" aria-labelledby="dialog-title" class="support-dialog">
+      <div class="dialog-panel">
+        <h2 id="dialog-title">Need help?</h2>
+        <p>Our support team usually replies within 1 business day.</p>
+        <button type="button" class="close-btn">Close</button>
+      </div>
+    </div>
+
+    <script>
+      const helpLink = document.getElementById('help-link');
+      const dialog = document.getElementById('dialog-help');
+      const closeBtn = document.querySelector('.close-btn');
+
+      helpLink.addEventListener('click', function (event) {
+        event.preventDefault();
+        dialog.style.display = 'block';
+      });
+
+      closeBtn.addEventListener('click', function () {
+        dialog.style.display = 'none';
+      });
+
+      const dropdown = document.getElementById('priority-dropdown');
+      const dropdownToggle = dropdown.querySelector('.custom-dropdown-toggle');
+      const dropdownValue = dropdown.querySelector('.custom-dropdown-value');
+      const dropdownInput = document.getElementById('priority-input');
+      const options = Array.from(dropdown.querySelectorAll('[role="option"]'));
+      let activeIndex = -1;
+      let selectedIndex = -1;
+      let typeahead = '';
+      let typeaheadTimer;
+
+      function isOpen() {
+        return dropdown.classList.contains('open');
+      }
+
+      function setActive(index) {
+        options.forEach(function (option) {
+          option.classList.remove('active');
+        });
+        activeIndex = index;
+        if (index < 0) {
+          dropdownToggle.removeAttribute('aria-activedescendant');
+          return;
+        }
+        const option = options[index];
+        option.classList.add('active');
+        dropdownToggle.setAttribute('aria-activedescendant', option.id);
+        option.scrollIntoView({ block: 'nearest' });
+      }
+
+      function setDropdownOpen(open) {
+        dropdown.classList.toggle('open', open);
+        dropdownToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        // Highlight the current choice; with no choice yet, nothing is highlighted until the user moves.
+        setActive(open ? selectedIndex : -1);
+      }
+
+      function selectOption(index) {
+        if (index < 0) return;
+        options.forEach(function (option, i) {
+          const selected = i === index;
+          option.classList.toggle('selected', selected);
+          option.setAttribute('aria-selected', selected ? 'true' : 'false');
+        });
+        selectedIndex = index;
+        dropdownValue.textContent = options[index].textContent;
+        dropdownInput.value = options[index].dataset.value;
+      }
+
+      function findByTypeahead(char) {
+        clearTimeout(typeaheadTimer);
+        typeahead += char.toLowerCase();
+        typeaheadTimer = setTimeout(function () {
+          typeahead = '';
+        }, 500);
+        const start = activeIndex >= 0 ? activeIndex : selectedIndex;
+        for (let offset = 1; offset <= options.length; offset++) {
+          // A single repeated key cycles through matches; a longer string matches from the current option.
+          const i = (start + (typeahead.length > 1 ? offset - 1 : offset) + options.length) % options.length;
+          if (options[i].textContent.toLowerCase().startsWith(typeahead)) {
+            return i;
+          }
+        }
+        return -1;
+      }
+
+      dropdownToggle.addEventListener('click', function () {
+        setDropdownOpen(!isOpen());
+      });
+
+      dropdownToggle.addEventListener('keydown', function (event) {
+        const last = options.length - 1;
+
+        if (!isOpen()) {
+          if (['ArrowDown', 'ArrowUp', 'Enter', ' ', 'Home', 'End'].includes(event.key)) {
+            event.preventDefault();
+            setDropdownOpen(true);
+            if (event.key === 'Home') setActive(0);
+            if (event.key === 'End') setActive(last);
+          } else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+            const match = findByTypeahead(event.key);
+            if (match >= 0) selectOption(match);
+          }
+          return;
+        }
+
+        switch (event.key) {
+          case 'ArrowDown':
+            event.preventDefault();
+            setActive(Math.min(activeIndex + 1, last));
+            break;
+          case 'ArrowUp':
+            event.preventDefault();
+            if (event.altKey) {
+              selectOption(activeIndex);
+              setDropdownOpen(false);
+            } else {
+              setActive(activeIndex < 0 ? last : Math.max(activeIndex - 1, 0));
+            }
+            break;
+          case 'Home':
+            event.preventDefault();
+            setActive(0);
+            break;
+          case 'End':
+            event.preventDefault();
+            setActive(last);
+            break;
+          case 'Enter':
+          case ' ':
+            event.preventDefault();
+            selectOption(activeIndex);
+            setDropdownOpen(false);
+            break;
+          case 'Escape':
+            event.preventDefault();
+            setDropdownOpen(false);
+            break;
+          case 'Tab':
+            // Close without changing the value; only Enter, Space or a click selects. Focus moves on naturally.
+            setDropdownOpen(false);
+            break;
+          default:
+            if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+              const match = findByTypeahead(event.key);
+              if (match >= 0) setActive(match);
+            }
+        }
+      });
+
+      options.forEach(function (option, index) {
+        // Keep focus on the combobox when clicking an option.
+        option.addEventListener('mousedown', function (event) {
+          event.preventDefault();
+        });
+        option.addEventListener('click', function () {
+          selectOption(index);
+          setDropdownOpen(false);
+          dropdownToggle.focus();
+        });
+        option.addEventListener('mousemove', function () {
+          if (activeIndex !== index) setActive(index);
+        });
+      });
+
+      document.addEventListener('click', function (event) {
+        if (!dropdown.contains(event.target)) {
+          setDropdownOpen(false);
+        }
+      });
+    </script>
+  </body>
+</html>
