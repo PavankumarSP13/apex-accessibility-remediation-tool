@@ -10,6 +10,7 @@ import { AxeBuilder } from '@axe-core/playwright';
 import { failedLighthouseResult, phase3b_lighthouse, phase3e_pa11y } from '../scanning/scan.js';
 import { phase3c_keyboard } from '../scanning/keyboard-scan.js';
 import { phase3d_interaction } from '../scanning/interaction-scan.js';
+import { phase3i_dropdownKeyboard } from '../scanning/dropdown-keyboard-scan.js';
 import { fixNeedsBuild } from './patch.js';
 import { hardReloadWithCacheBust, installNoCacheRoute, waitForServerReady, warmUpRuntimePage } from '../scanning/browser.js';
 import { opts, relaxTlsVerifyForUrl, resolveExtraUrls } from '../core/cli.js';
@@ -340,6 +341,12 @@ export async function phase6_rescan(url, isUrlLocalMode = false, sourceFileMap =
     console.log(chalk.dim(`  Interaction re-scan: ${interactionResult.triggerCount || 0} trigger(s), ${interactionResult.scannedCount || 0} scanned, ${interactionResult.issues.length} issue(s)`));
   }
 
+  // Re-run the dropdown keyboard scan so arrow-key / Enter / Space fixes are verified live.
+  const dropdownKeyboardResult = await phase3i_dropdownKeyboard(url).catch(err => {
+    console.log(chalk.yellow(`  ⚠ Dropdown keyboard re-scan failed: ${err.message}`));
+    return { issues: [], goodToHave: [], stats: null, scanFailed: true, failReason: err.message };
+  });
+
   if (beforeData) {
     const bAxe = beforeData.axe?.reduce((s, r) => s + r.violations.length, 0) ?? 0;
     const axeScanFailed = axe.scanFailed === true || axe.some(r => r.scanFailed === true);
@@ -369,7 +376,7 @@ export async function phase6_rescan(url, isUrlLocalMode = false, sourceFileMap =
     console.log(`  pa11y warnings:   ${bPaWarnings} → ${pa11yUnavailable ? chalk.yellow(pa11yUnavailableLabel) : aPaWarnings}  ${pa11yResult.skipped ? chalk.dim('(skipped — no pa11y-origin fixable issues)') : pa11yUnavailable ? chalk.yellow('(data incomplete — not verified improvement)') : aPaWarnings < bPaWarnings ? chalk.green(`(↓ ${bPaWarnings - aPaWarnings} fixed)`) : aPaWarnings > bPaWarnings ? chalk.red(`(↑ ${aPaWarnings - bPaWarnings} new)`) : chalk.dim('(no change)')}`);
 
     const knownNonFixable = analysis ? buildNonFixableFingerprints(analysis) : null;
-    const introduced = axeScanFailed ? [] : computeIntroducedIssues(beforeData, { axe, lh, pa11y: pa11yResult, keyboard: keyboardResult }, knownNonFixable);
+    const introduced = axeScanFailed ? [] : computeIntroducedIssues(beforeData, { axe, lh, pa11y: pa11yResult, keyboard: keyboardResult, dropdownKeyboard: dropdownKeyboardResult }, knownNonFixable);
     const introducedRuleIds = [...new Set(introduced.map(issue => issue.ruleId).filter(Boolean))];
     if (introduced.length > 0) {
       console.log(chalk.red(`\n  ⚠ ${introduced.length} new violation instance(s) introduced:`));
@@ -386,5 +393,5 @@ export async function phase6_rescan(url, isUrlLocalMode = false, sourceFileMap =
     console.log('');
   }
 
-  return { axe, lh, pa11y: pa11yResult, keyboard: keyboardResult, interaction: interactionResult };
+  return { axe, lh, pa11y: pa11yResult, keyboard: keyboardResult, interaction: interactionResult, dropdownKeyboard: dropdownKeyboardResult };
 }

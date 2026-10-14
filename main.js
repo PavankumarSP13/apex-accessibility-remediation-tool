@@ -271,6 +271,16 @@ export async function main() {
       console.log(chalk.dim(`  Focusable-action scan skipped: ${err.message}`));
     }
 
+    // Phase 3i: Dropdown keyboard scan — Enter/Space open, arrows move, Home/End optional,
+    // radio groups arrow-navigable, focus order follows visual order; repeated inside dialogs.
+    let dropdownKeyboardResult = { issues: [], goodToHave: [], stats: null };
+    try {
+      const { phase3i_dropdownKeyboard } = await import('./src/scanning/dropdown-keyboard-scan.js');
+      dropdownKeyboardResult = await phase3i_dropdownKeyboard(phase3ScanUrl);
+    } catch (err) {
+      console.log(chalk.dim(`  Dropdown keyboard scan skipped: ${err.message}`));
+    }
+
     // Phase 3h: Missing alt attribute scan — WCAG 1.1.1 Level A, not a good-to-have suggestion
     let missingAltIssues = [];
     try {
@@ -314,6 +324,7 @@ export async function main() {
       keyboard: keyboardResult,
       interaction: interactionResult,
       focusableAction: focusableActionResult,
+      dropdownKeyboard: dropdownKeyboardResult,
       missingAlt: { issues: missingAltIssues },
     };
 
@@ -338,7 +349,7 @@ export async function main() {
     }
 
     enterPhase('Phase 4 · analyze & map');
-    const analysis   = await phase4_analyzeAndMap(axeResults, lhResult, pa11yResult, ingested.repoPath, sourceFileMap, keyboardResult, interactionResult, focusableActionResult, missingAltIssues);
+    const analysis   = await phase4_analyzeAndMap(axeResults, lhResult, pa11yResult, ingested.repoPath, sourceFileMap, keyboardResult, interactionResult, focusableActionResult, missingAltIssues, dropdownKeyboardResult);
     report.analysis  = analysis;
     report.baseline  = analysis.baseline;
 
@@ -566,6 +577,14 @@ export async function main() {
       } finally {
         if (gthBrowser) await gthBrowser.close().catch(() => {});
       }
+    }
+
+    // Dropdown Home/End and type-ahead are optional (APG) — reported alongside the other good-to-have suggestions.
+    const dropdownSuggestions = dropdownKeyboardResult.goodToHave || [];
+    if (dropdownSuggestions.length > 0) {
+      const suggestions = [...(report.goodToHave?.suggestions || []), ...dropdownSuggestions];
+      report.goodToHave = { suggestions, totalSuggestions: suggestions.length };
+      console.log(chalk.dim(`  Dropdown Home/End / type-ahead suggestions: ${dropdownSuggestions.length} (good to have, not errors)`));
     }
 
   } catch (err) {

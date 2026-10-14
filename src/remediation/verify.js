@@ -263,6 +263,8 @@ export function buildIssueVerificationLedger(analysis, afterData, fixes, unverif
   const pa11yUnavailablePages = normalizeUnavailablePages(afterData?.pa11y?.unavailable);
   const lighthouseScanFailed = afterData?.lh?.scanFailed === true;
   const keyboardScanFailed = afterData?.keyboard?.scanFailed === true;
+  // Older run reports have no dropdownKeyboard rescan; treat that as unverified, not resolved.
+  const dropdownKeyboardScanFailed = !afterData?.dropdownKeyboard || afterData.dropdownKeyboard.scanFailed === true;
   const afterIssues = normalizeAfterRescanIssues(afterData);
   const afterExactCounts = new Map();
   const afterStructuralCounts = new Map();
@@ -295,7 +297,8 @@ export function buildIssueVerificationLedger(analysis, afterData, fixes, unverif
     const sourceScanFailed = (issue.source === 'axe' && (axeScanFailed || axeUnavailablePages.has(issue.page || '')))
       || (issue.source === 'pa11y' && pa11yIssueScanFailed)
       || (issue.source === 'lighthouse' && lighthouseScanFailed)
-      || (issue.source === 'keyboard' && keyboardScanFailed);
+      || (issue.source === 'keyboard' && keyboardScanFailed)
+      || (issue.source === 'dropdown-keyboard' && dropdownKeyboardScanFailed);
     let status = sourceScanFailed ? 'scan-failed' : 'resolved';
     if (!sourceScanFailed) {
       if (exactRemaining > 0) {

@@ -20,6 +20,35 @@ function getTriggerKey(trigger) {
 }
 
 /**
+ * Snapshot of what a trigger can change: its aria-expanded value, a hash of the set
+ * of visible elements, and how many nodes the MutationObserver has seen added.
+ */
+async function activationSignature(page, selector) {
+  return page.evaluate((sel) => {
+    const el = document.querySelector(sel);
+    let visible = 0;
+    let hash = 0;
+    const all = document.body.querySelectorAll('*');
+    for (let i = 0; i < all.length; i++) {
+      const n = all[i];
+      const shown = n.checkVisibility
+        ? n.checkVisibility({ visibilityProperty: true, opacityProperty: true })
+        : n.getClientRects().length > 0;
+      if (shown) { visible++; hash = (hash * 31 + i) | 0; }
+    }
+    return { expanded: el?.getAttribute('aria-expanded') ?? null, visible, hash, added: (window.__a11yAdded || []).length };
+  }, selector).catch(() => null);
+}
+
+function activationChanged(before, after) {
+  if (!before || !after) return false;
+  return (after.expanded === 'true' && before.expanded !== 'true')
+    || after.visible !== before.visible
+    || after.hash !== before.hash
+    || after.added > before.added;
+}
+
+/**
  * Produce a dedup fingerprint from an HTML snippet based on tag, class, and data attrs.
  */
 function domTokenFingerprint(html) {
@@ -172,7 +201,18 @@ export async function phase3d_interaction(scanUrl) {
         });
       });
 
-      return results;
+      // Dropdown triggers are keyboard-tested by the dropdown keyboard scan (Phase 3i);
+      // flag them so a click-only dropdown is not reported twice.
+      const DROPDOWN_TRIGGER = 'select, [role="combobox"], [aria-haspopup]:not([aria-haspopup="false"]):not([aria-haspopup="dialog"]), '
+        + '.dropdown-toggle, [data-toggle="dropdown"], [data-bs-toggle="dropdown"]';
+      const controlsList = (el) => (el.getAttribute('aria-controls') || '').split(/\s+/).filter(Boolean).some(id => {
+        const c = document.getElementById(id);
+        return c && (c.matches('[role="listbox"], [role="menu"], [role="tree"], [role="grid"], ul, ol') || c.querySelector('[role="option"], [role="menuitem"]'));
+      });
+      return results.map(r => {
+        const el = document.querySelector(r.selector);
+        return { ...r, coveredByDropdownScan: Boolean(el && (el.matches(DROPDOWN_TRIGGER) || controlsList(el))) };
+      });
     });
 
     const triggerCount = triggers.length;
@@ -249,9 +289,23 @@ export async function phase3d_interaction(scanUrl) {
           window.__a11yObs.observe(document.body, { childList: true, subtree: true });
         });
 
-        const key = getTriggerKey(trigger);
-        await page.keyboard.press(key);
-        await page.waitForTimeout(SETTLE_MS);
+        // Try the trigger's APG key, then Enter and Space, before concluding the keyboard cannot activate it.
+        const keysTried = [...new Set([getTriggerKey(trigger), 'Enter', 'Space'])];
+        const urlAtStart = page.url();
+        let keyboardWorked = false;
+        let keyboardNavigated = false;
+        for (const key of keysTried) {
+          await handle.focus().catch(() => {});
+          const beforeKey = await activationSignature(page, trigger.selector);
+          await page.keyboard.press(key);
+          await page.waitForTimeout(SETTLE_MS);
+          if (page.url() !== urlAtStart) { keyboardNavigated = true; break; }
+          if (activationChanged(beforeKey, await activationSignature(page, trigger.selector))) { keyboardWorked = true; break; }
+        }
+        if (keyboardNavigated) {
+          await page.goBack({ waitUntil: 'load', timeout: 10000 }).catch(() => {});
+          continue; // behaves as a link
+        }
 
         // Determine scan target — check if keyboard activation worked
         let scanTarget = trigger.controls ? `#${trigger.controls}` : null;
@@ -267,17 +321,47 @@ export async function phase3d_interaction(scanUrl) {
           if (!isVisible) scanTarget = null; // keyboard didn't open it
         }
 
-        // If keyboard activation didn't work, try click fallback
+        // If keyboard activation didn't work, try click fallback. If the keyboard did work but
+        // there is no aria-controls target, skip the click (it could toggle the content shut)
+        // and just locate the revealed content below.
         if (!scanTarget) {
           const urlBefore = page.url();
           try {
-            await page.click(trigger.selector, { timeout: 2000 });
-            await page.waitForTimeout(SETTLE_MS);
+            if (!keyboardWorked) {
+              const beforeClick = await activationSignature(page, trigger.selector);
+              await page.click(trigger.selector, { timeout: 2000 });
+              await page.waitForTimeout(SETTLE_MS);
 
-            // Safety: check we didn't navigate away
-            if (page.url() !== urlBefore) {
-              await page.goBack({ waitUntil: 'load', timeout: 10000 }).catch(() => {});
-              continue; // skip this trigger
+              // Safety: check we didn't navigate away
+              if (page.url() !== urlBefore) {
+                await page.goBack({ waitUntil: 'load', timeout: 10000 }).catch(() => {});
+                continue; // skip this trigger
+              }
+
+              // A mouse click reveals content that none of the keys did: WCAG 2.1.1 failure.
+              // Dropdowns are reported by the dropdown keyboard scan; tooltips show on focus, not activation.
+              const clickWorked = activationChanged(beforeClick, await activationSignature(page, trigger.selector));
+              if (clickWorked && !trigger.coveredByDropdownScan && trigger.type !== 'tooltip') {
+                const triggerHtml = await page.$eval(trigger.selector, el => el.outerHTML.slice(0, 200)).catch(() => '');
+                issues.push({
+                  ruleId: 'interaction-keyboard-activation-failed',
+                  source: 'interaction',
+                  impact: 'serious',
+                  description: `Trigger (${trigger.type}) only reveals its content with a mouse click; pressing ${keysTried.join(', ')} did nothing.`,
+                  helpUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html',
+                  nodes: [{
+                    html: triggerHtml,
+                    target: trigger.selector,
+                    fix: 'Make the trigger a native <button>, or handle Enter and Space (keydown) on it the same way as click.',
+                  }],
+                  element: triggerHtml,
+                  page: scanUrl,
+                  triggerSelector: trigger.selector,
+                  triggerType: trigger.type,
+                  activatedBy: 'click-fallback',
+                  keysAttempted: keysTried,
+                });
+              }
             }
 
             // Re-check for scan target
@@ -346,7 +430,7 @@ export async function phase3d_interaction(scanUrl) {
               }
             }
 
-            usedClickFallback = true;
+            usedClickFallback = !keyboardWorked;
           } catch {
             // Click failed — skip this trigger
             continue;
