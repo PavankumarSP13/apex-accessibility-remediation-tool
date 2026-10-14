@@ -204,7 +204,7 @@ async function injectMutationObserver(page) {
         }
       }
     });
-    window.__fa11yObs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'aria-hidden', 'aria-expanded', 'aria-modal'] });
+    window.__fa11yObs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'aria-hidden', 'aria-checked', 'aria-expanded', 'aria-modal'] });
   });
 }
 
@@ -567,6 +567,51 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
     let scannedCount = 0;
     let noActionCount = 0;
     let dialogCount = 0;
+
+    const radioAudit = await page.evaluate(() => {
+      function buildSelector(element) {
+        const parts = [];
+        for (let node = element; node && node !== document.body; node = node.parentElement) {
+          let part = node.tagName.toLowerCase();
+          const classes = [...node.classList].filter(Boolean).slice(0, 2);
+          part += classes.map(className => `.${CSS.escape(className)}`).join('');
+          const siblings = [...node.parentElement.children].filter(sibling => sibling.tagName === node.tagName);
+          if (siblings.length > 1) part += `:nth-of-type(${siblings.indexOf(node) + 1})`;
+          parts.unshift(part);
+        }
+        return `body > ${parts.join(' > ')}`;
+      }
+
+      const groups = [...document.querySelectorAll('[role="radiogroup"]')].map(group => {
+        const radios = [...group.querySelectorAll('[role="radio"]')]
+          .filter(radio => radio.closest('[role="radiogroup"]') === group);
+        const style = getComputedStyle(group);
+        const rect = group.getBoundingClientRect();
+        return { group, radios, visible: style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0 };
+      }).filter(item => item.radios.length > 0 && item.visible);
+
+      const issues = groups.flatMap(({ group, radios }) => {
+        const hasTabStop = group.tabIndex >= 0 || radios.some(radio => radio.tabIndex >= 0);
+        if (hasTabStop) return [];
+
+        const html = group.outerHTML.slice(0, 500);
+        return [{
+          ruleId: 'radio-group-not-keyboard-reachable',
+          impact: 'serious',
+          description: 'ARIA radio group has no Tab-reachable radio. Keyboard users cannot reach or select its options.',
+          nodes: [{
+            html,
+            target: buildSelector(group),
+            fix: 'Make one radio in the group tabbable, keep the other radios in a roving tab order, and support Space plus arrow-key selection.',
+          }],
+          element: html,
+        }];
+      });
+
+      return { checkedCount: groups.length, issues };
+    });
+    scannedCount += radioAudit.checkedCount;
+    issues.push(...radioAudit.issues.map(issue => ({ ...issue, source: 'focusable-action', page: scanUrl })));
 
     // ── Reset focus and start tabbing ───────────────────────────────
     await page.evaluate(() => document.body.focus());
