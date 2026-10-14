@@ -5,44 +5,44 @@ import { AxeBuilder } from '@axe-core/playwright';
 import chalk from 'chalk';
 import { waitForStablePage } from './browser.js';
 import { relaxTlsVerifyForUrl } from '../core/cli.js';
-
+ 
 const MAX_TAB_PRESSES = 300;
 const SETTLE_MS = 600;
 const DIALOG_SETTLE_MS = 800;
 const MAX_DIALOG_TAB = 50;
-
+ 
 /**
- * ARIA APG key map — keys to press to activate each role/tag.
- * Ref: https://www.w3.org/WAI/ARIA/apg/patterns/
- *
- * Returns array of keys to try in order. First key that produces a DOM change wins.
- * Keys are ordered from "most likely to trigger the primary action" to fallbacks.
- *
- * Sources for each role:
- *   button       → apg/patterns/button/          Enter, Space
- *   link         → apg/patterns/link/             Enter
- *   checkbox     → apg/patterns/checkbox/         Space
- *   radio        → apg/patterns/radio/            Space (primary); ArrowDown/ArrowRight move within group
- *   switch       → apg/patterns/switch/           Space (Enter optional)
- *   tab          → apg/patterns/tabs/             Enter/Space to activate; ArrowRight/ArrowLeft to move
- *   menuitem     → apg/patterns/menubar/          Enter, Space
- *   menubutton   → apg/patterns/menu-button/      Enter, Space (opens menu); ArrowDown (optional, moves to first item)
- *   combobox     → apg/patterns/combobox/         ArrowDown moves into popup; Alt+ArrowDown shows without moving
- *   listbox      → apg/patterns/listbox/          ArrowDown/Up navigate; Space selects
- *   slider       → apg/patterns/slider/           ArrowRight/ArrowUp increase; ArrowLeft/ArrowDown decrease
- *   spinbutton   → apg/patterns/spinbutton/       ArrowUp increases; ArrowDown decreases
- *   treeitem     → apg/patterns/treeview/         Enter = default action; ArrowRight opens; ArrowDown moves
- *   treegrid     → apg/patterns/treegrid/         Enter opens/closes; ArrowDown navigates
- *   toolbar      → apg/patterns/toolbar/          ArrowRight/Left navigate within toolbar
- *   grid/gridcell→ apg/patterns/grid/             ArrowRight/Down navigate; Enter enters edit mode
- *   disclosure   → apg/patterns/disclosure/       Enter, Space (same as button)
- *   accordion    → apg/patterns/accordion/        Enter, Space (expand/collapse)
- */
+* ARIA APG key map — keys to press to activate each role/tag.
+* Ref: https://www.w3.org/WAI/ARIA/apg/patterns/
+*
+* Returns array of keys to try in order. First key that produces a DOM change wins.
+* Keys are ordered from "most likely to trigger the primary action" to fallbacks.
+*
+* Sources for each role:
+*   button       → apg/patterns/button/          Enter, Space
+*   link         → apg/patterns/link/             Enter
+*   checkbox     → apg/patterns/checkbox/         Space
+*   radio        → apg/patterns/radio/            Space (primary); ArrowDown/ArrowRight move within group
+*   switch       → apg/patterns/switch/           Space (Enter optional)
+*   tab          → apg/patterns/tabs/             Enter/Space to activate; ArrowRight/ArrowLeft to move
+*   menuitem     → apg/patterns/menubar/          Enter, Space
+*   menubutton   → apg/patterns/menu-button/      Enter, Space (opens menu); ArrowDown (optional, moves to first item)
+*   combobox     → apg/patterns/combobox/         ArrowDown moves into popup; Alt+ArrowDown shows without moving
+*   listbox      → apg/patterns/listbox/          ArrowDown/Up navigate; Space selects
+*   slider       → apg/patterns/slider/           ArrowRight/ArrowUp increase; ArrowLeft/ArrowDown decrease
+*   spinbutton   → apg/patterns/spinbutton/       ArrowUp increases; ArrowDown decreases
+*   treeitem     → apg/patterns/treeview/         Enter = default action; ArrowRight opens; ArrowDown moves
+*   treegrid     → apg/patterns/treegrid/         Enter opens/closes; ArrowDown navigates
+*   toolbar      → apg/patterns/toolbar/          ArrowRight/Left navigate within toolbar
+*   grid/gridcell→ apg/patterns/grid/             ArrowRight/Down navigate; Enter enters edit mode
+*   disclosure   → apg/patterns/disclosure/       Enter, Space (same as button)
+*   accordion    → apg/patterns/accordion/        Enter, Space (expand/collapse)
+*/
 function getActivationKeys(tag, role, inputType) {
   const r = (role || '').toLowerCase();
   const t = (tag || '').toLowerCase();
   const it = (inputType || '').toLowerCase();
-
+ 
   // Elements whose "action" is simply receiving focus — activating them does nothing extra.
   // These are skipped entirely (return null = don't flag as no-action).
   const SKIP_ROLES = new Set([
@@ -58,109 +58,108 @@ function getActivationKeys(tag, role, inputType) {
     'text', 'email', 'password', 'search', 'url', 'number', 'tel',
     'date', 'time', 'datetime-local', 'month', 'week', 'color', 'range', 'file',
   ]);
-
+ 
   if (SKIP_ROLES.has(r)) return null;
   if (t === 'input' && SKIP_INPUTS.has(it)) return null;
   if (t === 'textarea') return null;
-
+ 
   // ── Role-first mapping (APG-authoritative) ───────────────────────────────
-
+ 
   // Button (apg/patterns/button): Enter activates, Space activates
   if (r === 'button') return ['Enter', 'Space'];
-
+ 
   // Link (apg/patterns/link): Enter follows the link
   if (r === 'link') return ['Enter'];
-
+ 
   // Checkbox (apg/patterns/checkbox): Space toggles state
   if (r === 'checkbox') return ['Space'];
-
+ 
   // Radio (apg/patterns/radio): Space checks focused button;
   // ArrowDown/ArrowRight move within the group (both check the new button)
   if (r === 'radio') return ['Space', 'ArrowDown', 'ArrowRight'];
-
+ 
   // Switch (apg/patterns/switch): Space changes state; Enter is optional
   if (r === 'switch') return ['Space', 'Enter'];
-
+ 
   // Tab widget (apg/patterns/tabs): Enter/Space activate a non-auto-activating tab;
   // ArrowRight moves to next tab (auto-activation mode)
   if (r === 'tab') return ['ArrowRight', 'Enter', 'Space'];
-
+ 
   // Menu items (apg/patterns/menubar): Enter/Space execute; ArrowRight opens submenu
   if (r === 'menuitem') return ['Enter', 'Space'];
   if (r === 'menuitemcheckbox') return ['Space', 'Enter'];
   if (r === 'menuitemradio') return ['Space', 'Enter'];
-
+ 
   // Option in listbox (apg/patterns/listbox): ArrowDown navigates; Space selects
   if (r === 'option') return ['Space', 'Enter'];
-
+ 
   // Combobox (apg/patterns/combobox): ArrowDown moves focus into popup (primary);
   // Alt+ArrowDown shows popup without moving focus; Enter accepts suggestion
   if (r === 'combobox') return ['ArrowDown', 'Alt+ArrowDown', 'Enter'];
-
+ 
   // Listbox (apg/patterns/listbox): ArrowDown navigates options
   if (r === 'listbox') return ['ArrowDown'];
-
+ 
   // Slider (apg/patterns/slider): ArrowRight/ArrowUp increase value
   if (r === 'slider') return ['ArrowRight', 'ArrowUp'];
-
+ 
   // Spinbutton (apg/patterns/spinbutton): ArrowUp increases, ArrowDown decreases
   if (r === 'spinbutton') return ['ArrowUp', 'ArrowDown'];
-
+ 
   // Treeitem (apg/patterns/treeview): Enter = default action; ArrowRight opens closed node
   if (r === 'treeitem') return ['Enter', 'ArrowRight'];
-
+ 
   // Tree container (apg/patterns/treeview): ArrowDown moves to first item
   if (r === 'tree') return ['ArrowDown'];
-
+ 
   // Treegrid (apg/patterns/treegrid): Enter opens/closes rows; ArrowDown navigates
   if (r === 'treegrid') return ['Enter', 'ArrowDown'];
-
+ 
   // Grid / gridcell (apg/patterns/grid): Enter enters edit mode on cell
   if (r === 'grid') return ['ArrowDown', 'ArrowRight'];
   if (r === 'gridcell') return ['Enter'];
   if (r === 'columnheader') return ['Enter'];
   if (r === 'rowheader') return ['Enter'];
-
+ 
   // Toolbar (apg/patterns/toolbar): ArrowRight navigates to next control
   if (r === 'toolbar') return ['ArrowRight'];
-
+ 
   // Menu container (apg/patterns/menubar): ArrowDown moves to first item
   if (r === 'menu') return ['ArrowDown'];
-
+ 
   // Menubar (apg/patterns/menubar): ArrowRight moves to next menu
   if (r === 'menubar') return ['ArrowRight'];
-
+ 
   // ── Tag-based fallbacks (for elements without explicit ARIA roles) ────────
-
+ 
   // Native <a> — Enter follows link (same as role=link)
   if (t === 'a') return ['Enter'];
-
+ 
   // Native <button> — Enter and Space (same as role=button)
   if (t === 'button') return ['Enter', 'Space'];
-
-  // Native <select> — the browser provides Space/Enter/arrow handling, and its popup is
-  // drawn outside the DOM, so pressing keys leaves no observable change. Skip it.
-  if (t === 'select') return null;
-
+ 
+  // Native <select> — Space or Enter opens the dropdown
+  if (t === 'select') return ['Space', 'Enter'];
+ 
   // Native checkboxes/radios
   if (t === 'input' && it === 'checkbox') return ['Space'];
   if (t === 'input' && it === 'radio') return ['Space', 'ArrowDown'];
-
+ 
   // Submit / reset buttons
   if (t === 'input' && it === 'submit') return ['Enter'];
   if (t === 'input' && it === 'button') return ['Enter', 'Space'];
   if (t === 'input' && it === 'reset') return ['Enter'];
-
+ 
   // <details>/<summary> — disclosure pattern (apg/patterns/disclosure): Enter, Space
   if (t === 'summary') return ['Enter', 'Space'];
-
+ 
   // Unknown interactive element — Enter is the safest default per ARIA spec
   return ['Enter'];
 }
-
+ 
 /**
- * Inject a MutationObserver into the page that records any DOM additions.
- */
+* Inject a MutationObserver into the page that records any DOM additions.
+*/
 async function injectMutationObserver(page) {
   await page.evaluate(() => {
     if (window.__fa11yObs) window.__fa11yObs.disconnect();
@@ -207,7 +206,7 @@ async function injectMutationObserver(page) {
     window.__fa11yObs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'aria-hidden', 'aria-checked', 'aria-expanded', 'aria-modal'] });
   });
 }
-
+ 
 async function collectMutations(page) {
   return page.evaluate(() => {
     if (window.__fa11yObs) window.__fa11yObs.disconnect();
@@ -217,7 +216,7 @@ async function collectMutations(page) {
     return items;
   });
 }
-
+ 
 /**
  * Arm a per-element probe: a window flag that disappears if the page reloads, and a
  * flag set by any form submit/invalid event. Submitting a form that posts back to the
@@ -294,10 +293,10 @@ export async function detectOpenDialog(page) {
     return { found: false, selector: null };
   });
 }
-
+ 
 /**
- * Run axe inside a dialog/modal and return violations.
- */
+* Run axe inside a dialog/modal and return violations.
+*/
 async function scanDialogForIssues(page, dialogSelector, scanUrl) {
   try {
     const result = await new AxeBuilder({ page })
@@ -326,20 +325,21 @@ async function scanDialogForIssues(page, dialogSelector, scanUrl) {
     return [];
   }
 }
-
-
+ 
+ 
 /**
- * Audit a dialog/modal for three distinct accessibility issues:
- *
- *  1. dialog-focus-not-moved   — focus did NOT land inside the dialog when it opened
- *  2. dialog-element-unreachable — one or more focusable elements cannot be reached by Tab
- *  3. dialog-focus-order-wrong — Tab order does not follow the visual/DOM order
- *
- * Returns an array of issue objects ready to push into the issues list.
- */
+* Audit a dialog/modal for three distinct accessibility issues:
+*
+*  1. dialog-focus-not-moved   — focus did NOT land inside the dialog when it opened
+*  2. dialog-element-unreachable — one or more focusable elements cannot be reached by Tab
+*  3. dialog-focus-order-wrong — Tab order does not follow the visual/DOM order
+*  4. dialog-focus-escapes      — Tab, Shift+Tab, or arrow navigation leaves the dialog
+*
+* Returns an array of issue objects ready to push into the issues list.
+*/
 async function auditDialog(page, dialogSelector, scanUrl, triggerSelector, screenshotPath) {
   const issues = [];
-
+ 
   // ── 1. Was focus moved inside the dialog when it opened? ─────────────────
   const focusState = await page.evaluate((sel) => {
     const container = document.querySelector(sel);
@@ -353,9 +353,9 @@ async function auditDialog(page, dialogSelector, scanUrl, triggerSelector, scree
       activeIsBody: !active || active === document.body,
     };
   }, dialogSelector);
-
+ 
   if (!focusState.containerFound) return issues;
-
+ 
   if (!focusState.insideDialog) {
     issues.push({
       ruleId: 'dialog-focus-not-moved',
@@ -382,7 +382,7 @@ async function auditDialog(page, dialogSelector, scanUrl, triggerSelector, scree
       else if (container.tabIndex >= 0 || container.getAttribute('tabindex') !== null) container.focus();
     }, dialogSelector);
   }
-
+ 
   // ── 2 & 3. Tab-trace the dialog ──────────────────────────────────────────
   // Collect all focusable elements in DOM order (this IS the expected order).
   const expectedOrder = await page.evaluate((sel) => {
@@ -419,13 +419,13 @@ async function auditDialog(page, dialogSelector, scanUrl, triggerSelector, scree
     }
     return results;
   }, dialogSelector);
-
+ 
   if (expectedOrder.length === 0) return issues;
-
+ 
   // Tab through and record the actual order focus lands in
   const actualOrder = [];
   const visitedPaths = new Set();
-
+ 
   // The first focused element (we set it above) counts as step 0
   const firstPath = await page.evaluate(() => {
     function domPath(element) {
@@ -444,7 +444,7 @@ async function auditDialog(page, dialogSelector, scanUrl, triggerSelector, scree
     return domPath(el);
   });
   if (firstPath) { actualOrder.push(firstPath); visitedPaths.add(firstPath); }
-
+ 
   for (let i = 0; i < Math.min(MAX_DIALOG_TAB, expectedOrder.length * 2 + 5); i++) {
     await page.keyboard.press('Tab');
     const path = await page.evaluate(() => {
@@ -468,7 +468,7 @@ async function auditDialog(page, dialogSelector, scanUrl, triggerSelector, scree
     actualOrder.push(path);
     visitedPaths.add(path);
   }
-
+ 
   // Check 2: unreachable elements
   const expectedPaths = new Set(expectedOrder.map(e => e.domPath));
   const unreachable = expectedOrder.filter(e => !visitedPaths.has(e.domPath));
@@ -487,18 +487,18 @@ async function auditDialog(page, dialogSelector, scanUrl, triggerSelector, scree
       context: 'dialog',
     });
   }
-
+ 
   // Check 3: tab order matches DOM order
   // Only compare elements that were actually reached by Tab AND are in the expected list
   const actualInExpected = actualOrder.filter(p => expectedPaths.has(p));
   const expectedInActual = expectedOrder.map(e => e.domPath).filter(p => visitedPaths.has(p));
-
+ 
   // Find first position where the two sequences diverge
   let firstMismatch = -1;
   for (let i = 0; i < Math.min(actualInExpected.length, expectedInActual.length); i++) {
     if (actualInExpected[i] !== expectedInActual[i]) { firstMismatch = i; break; }
   }
-
+ 
   if (firstMismatch !== -1) {
     const actualEl = expectedOrder.find(e => e.domPath === actualInExpected[firstMismatch]);
     const expectedEl = expectedOrder.find(e => e.domPath === expectedInActual[firstMismatch]);
@@ -516,31 +516,190 @@ async function auditDialog(page, dialogSelector, scanUrl, triggerSelector, scree
       context: 'dialog',
     });
   }
-
+ 
+  // Check 4: focus must remain inside a modal dialog. This catches both
+  // missing focus traps and composite widgets that move focus to the page.
+  const boundaryResult = await checkDialogFocusBoundary(page, dialogSelector);
+  if (boundaryResult.tabEscape || boundaryResult.shiftTabEscape) {
+    const direction = boundaryResult.tabEscape && boundaryResult.shiftTabEscape
+      ? 'Tab and Shift+Tab'
+      : boundaryResult.tabEscape ? 'Tab' : 'Shift+Tab';
+    issues.push({
+      ruleId: 'dialog-focus-escapes',
+      source: 'focusable-action',
+      impact: 'critical',
+      description: `Focus escaped the open dialog when navigating with ${direction}; keyboard users can reach the page background while the modal is open.`,
+      nodes: [{ html: boundaryResult.activeHtml || '<body>', target: dialogSelector, fix: 'Trap Tab and Shift+Tab focus within the dialog while it is open. Restore focus to the trigger when the dialog closes.' }],
+      element: boundaryResult.activeHtml || '<body>',
+      page: scanUrl,
+      triggerSelector,
+      dialogSelector,
+      screenshotPath,
+      context: 'dialog',
+    });
+  }
+ 
+  if (boundaryResult.arrowEscape) {
+    issues.push({
+      ruleId: 'dialog-arrow-focus-escapes',
+      source: 'focusable-action',
+      impact: 'serious',
+      description: 'Arrow-key navigation moved focus outside the open dialog.',
+      nodes: [{ html: boundaryResult.activeHtml || '<body>', target: dialogSelector, fix: 'Keep arrow-key navigation scoped to the dialog widget and prevent focus from moving to the page background.' }],
+      element: boundaryResult.activeHtml || '<body>',
+      page: scanUrl,
+      triggerSelector,
+      dialogSelector,
+      screenshotPath,
+      context: 'dialog',
+    });
+  }
+ 
   return issues;
 }
-
+ 
+async function checkDialogFocusBoundary(page, dialogSelector) {
+  const focusables = await page.locator(`${dialogSelector} button:not([disabled]), ${dialogSelector} a[href], ${dialogSelector} input:not([disabled]):not([type="hidden"]), ${dialogSelector} select:not([disabled]), ${dialogSelector} textarea:not([disabled]), ${dialogSelector} [tabindex]:not([tabindex="-1"])`).evaluateAll(elements => elements.filter(el => {
+    const style = getComputedStyle(el);
+    const rect = el.getBoundingClientRect();
+    return style.display !== 'none' && style.visibility !== 'hidden'
+      && rect.width > 0 && rect.height > 0;
+  }).map(el => el.outerHTML.slice(0, 150))).catch(() => []);
+  if (focusables.length === 0) return { tabEscape: false, shiftTabEscape: false, arrowEscape: false };
+ 
+  const result = { tabEscape: false, shiftTabEscape: false, arrowEscape: false, activeHtml: '' };
+  const isInside = () => page.evaluate(sel => {
+    const container = document.querySelector(sel);
+    return Boolean(container && container.contains(document.activeElement));
+  }, dialogSelector);
+  const activeHtml = () => page.evaluate(() => document.activeElement?.outerHTML?.slice(0, 150) || '<body>');
+ 
+  await page.locator(dialogSelector).locator('button:not([disabled]), a[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])').last().focus();
+  await page.keyboard.press('Tab');
+  result.tabEscape = !(await isInside());
+  if (result.tabEscape) result.activeHtml = await activeHtml();
+ 
+  await page.locator(dialogSelector).locator('button:not([disabled]), a[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])').first().focus();
+  await page.keyboard.press('Shift+Tab');
+  result.shiftTabEscape = !(await isInside());
+  if (result.shiftTabEscape) result.activeHtml = await activeHtml();
+ 
+  const arrowTarget = page.locator(`${dialogSelector} [role="tab"], ${dialogSelector} [role="radio"], ${dialogSelector} [role="option"], ${dialogSelector} [role="menuitem"], ${dialogSelector} [role="menuitemradio"], ${dialogSelector} [role="menuitemcheckbox"], ${dialogSelector} [role="treeitem"], ${dialogSelector} [role="gridcell"], ${dialogSelector} [role="slider"], ${dialogSelector} [role="spinbutton"], ${dialogSelector} [role="combobox"], ${dialogSelector} [role="listbox"]`).first();
+  if (await arrowTarget.count()) {
+    await arrowTarget.focus();
+    const role = await arrowTarget.getAttribute('role');
+    await page.keyboard.press(['slider', 'spinbutton'].includes(role) ? 'ArrowUp' : 'ArrowRight');
+    result.arrowEscape = !(await isInside());
+    if (result.arrowEscape) result.activeHtml = await activeHtml();
+  }
+ 
+  return result;
+}
+ 
 /**
- * Sanitize a selector string to be safe as part of a filename.
- */
+* Sanitize a selector string to be safe as part of a filename.
+*/
 function selectorToFilename(sel) {
   return (sel || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 40);
 }
-
+ 
 /**
- * Phase 3g: Focusable Action Scan
- *
- * - Takes a baseline screenshot before any interaction
- * - Tabs through every focusable element one by one
- * - Activates each with the APG-correct key(s)
- * - Flags elements that do nothing when activated
- * - Screenshots any opened dialog/modal, scans it for accessibility issues,
- *   checks its internal keyboard navigability
- *
- * @param {string} scanUrl
- * @param {string} outputDir - run output dir (logger.dir or opts.output)
- * @returns {{ issues: Array, screenshots: string[], scannedCount: number, scanFailed?: boolean }}
- */
+* Find actionable arrow controls and verify that they have a useful
+* accessible name and can be reached from the keyboard.
+*/
+async function scanArrowButtons(page, scanUrl) {
+  const findings = await page.evaluate(() => {
+    const arrowPattern = /(?:^|[\s_-])(arrow|chevron|caret|next|previous|prev|back|forward|left|right|up|down)(?:$|[\s_-])|[←→↑↓↔↕]/i;
+    const actionable = document.querySelectorAll(
+      'button, a[href], [role="button"], [role="link"], [tabindex], ' +
+      '[onclick], [class*="arrow" i], [class*="chevron" i], [class*="caret" i], ' +
+      '[class*="next" i], [class*="prev" i], [class*="forward" i], [class*="back" i]'
+    );
+    const results = [];
+ 
+    for (const el of actionable) {
+      const className = typeof el.className === 'string' ? el.className : '';
+      const text = (el.textContent || '').trim();
+      const marker = `${el.id || ''} ${className} ${el.getAttribute('aria-label') || ''} ${el.getAttribute('title') || ''} ${text}`;
+      const isActionable = el.matches('button, a[href], [role="button"], [role="link"], [tabindex], [onclick]')
+        || typeof el.onclick === 'function';
+      if (!isActionable || !arrowPattern.test(marker)) continue;
+ 
+      const style = getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+      if (style.display === 'none' || style.visibility === 'hidden' || rect.width === 0 || rect.height === 0) continue;
+ 
+      const labelledBy = (el.getAttribute('aria-labelledby') || '').split(/\s+/)
+        .map(id => document.getElementById(id)?.textContent?.trim() || '')
+        .filter(Boolean)
+        .join(' ');
+      const accessibleName = el.getAttribute('aria-label')?.trim()
+        || labelledBy
+        || el.getAttribute('title')?.trim()
+        || text;
+      const missingName = !accessibleName
+        || /^[^a-z0-9]*$/i.test(accessibleName)
+        || /^(?:arrow|chevron|caret|icon)$/i.test(accessibleName);
+      const keyboardReachable = el.tabIndex >= 0;
+ 
+      let selector = el.id ? `#${CSS.escape(el.id)}` : el.tagName.toLowerCase();
+      if (!el.id && className) {
+        const classes = [...el.classList].filter(Boolean).slice(0, 2).map(c => CSS.escape(c));
+        if (classes.length) selector += `.${classes.join('.')}`;
+      }
+ 
+      results.push({
+        html: el.outerHTML.slice(0, 200),
+        selector,
+        missingName,
+        keyboardReachable,
+      });
+    }
+    return results;
+  });
+ 
+  const issues = [];
+  for (const item of findings) {
+    if (item.missingName) {
+      issues.push({
+        ruleId: 'arrow-button-no-accessible-name',
+        source: 'focusable-action',
+        impact: 'serious',
+        description: 'Arrow control does not have a descriptive accessible name that explains its action or direction.',
+        nodes: [{ html: item.html, target: item.selector, fix: 'Use a native button or link with an accessible name such as "Next page", "Previous item", "Expand section", or "Close dialog".' }],
+        element: item.html,
+        page: scanUrl,
+      });
+    }
+    if (!item.keyboardReachable) {
+      issues.push({
+        ruleId: 'arrow-button-not-keyboard-reachable',
+        source: 'focusable-action',
+        impact: 'serious',
+        description: 'Arrow control is actionable but cannot be reached with keyboard navigation.',
+        nodes: [{ html: item.html, target: item.selector, fix: 'Use a native <button> or <a>, or add tabindex="0" and implement keyboard activation without relying only on click.' }],
+        element: item.html,
+        page: scanUrl,
+      });
+    }
+  }
+  return issues;
+}
+ 
+/**
+* Phase 3g: Focusable Action Scan
+*
+* - Takes a baseline screenshot before any interaction
+* - Tabs through every focusable element one by one
+* - Activates each with the APG-correct key(s)
+* - Flags elements that do nothing when activated
+* - Screenshots any opened dialog/modal, scans it for accessibility issues,
+*   checks its internal keyboard navigability
+*
+* @param {string} scanUrl
+* @param {string} outputDir - run output dir (logger.dir or opts.output)
+* @returns {{ issues: Array, screenshots: string[], scannedCount: number, scanFailed?: boolean }}
+*/
 export async function phase3g_focusableAction(scanUrl, outputDir) {
   console.log(chalk.dim('  Running focusable-action scan (Phase 3g)...'));
   let browser;
@@ -548,20 +707,20 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
     // Ensure screenshots dir exists
     const screenshotsDir = path.join(outputDir, 'screenshots');
     await fs.mkdir(screenshotsDir, { recursive: true });
-
+ 
     browser = await chromium.launch({ headless: true });
     const ctx = await browser.newContext({ ignoreHTTPSErrors: relaxTlsVerifyForUrl(scanUrl) });
     const page = await ctx.newPage();
     await page.goto(scanUrl, { waitUntil: 'load', timeout: 30000 });
     await waitForStablePage(page, scanUrl);
-
+ 
     // ── Baseline screenshot ──────────────────────────────────────────
     const ts = Date.now();
     const hostname = (() => { try { return new URL(scanUrl).hostname.replace(/[^a-z0-9]/gi, '_'); } catch { return 'page'; } })();
     const baselinePath = path.join(screenshotsDir, `baseline_${hostname}_${ts}.png`);
     await page.screenshot({ path: baselinePath, fullPage: true });
     console.log(chalk.dim(`  Phase 3g: baseline screenshot → ${path.basename(baselinePath)}`));
-
+ 
     const issues = [];
     const screenshots = [baselinePath];
     let scannedCount = 0;
@@ -615,32 +774,33 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
 
     // ── Reset focus and start tabbing ───────────────────────────────
     await page.evaluate(() => document.body.focus());
-
+ 
     const visitedSelectors = new Set();
     let cycleCount = 0;
-
+ 
     for (let i = 0; i < MAX_TAB_PRESSES; i++) {
       await page.keyboard.press('Tab');
-
+ 
       // Capture a live ElementHandle pointing at document.activeElement right now.
       // This is a direct reference to the exact DOM node — no selector, no coordinates.
       // Clicking it later will always hit the right element regardless of viewport
       // size, zoom level, or how many other elements share the same CSS selector.
       const activeHandle = await page.evaluateHandle(() => document.activeElement);
-
+ 
       const elInfo = await page.evaluate(() => {
         const el = document.activeElement;
         if (!el || el === document.body) return null;
-
+ 
         function buildSelector(element) {
           if (element.id) return `#${element.id}`;
           let sel = element.tagName.toLowerCase();
           if (element.className && typeof element.className === 'string') {
             sel += '.' + [...element.classList].filter(c => c.length > 2).slice(0, 2).join('.');
           }
+ 
           return sel;
         }
-
+ 
         // DOM path fingerprint: the sequence of child-index values from <body> down
         // to this element.  Two distinct DOM nodes always have different paths even
         // when they share the same tag, classes, text, and screen position (e.g.
@@ -658,7 +818,7 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
           }
           return parts.join('>');
         }
-
+ 
         return {
           tag: el.tagName.toLowerCase(),
           role: el.getAttribute('role') || '',
@@ -674,12 +834,12 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
           elementCountBefore: document.querySelectorAll('*').length,
         };
       });
-
+ 
       if (!elInfo) {
         if (visitedSelectors.size > 0) break;
         continue;
       }
-
+ 
       // Cycle detection: use DOM path (child-index sequence from body to element)
       // as the unique identity.  Each DOM node has exactly one path, so this
       // correctly distinguishes every element on the page regardless of whether
@@ -692,13 +852,13 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
       }
       visitedSelectors.add(elInfo.domPath);
       cycleCount = 0;
-
+ 
       // Determine which keys to press
       const keys = getActivationKeys(elInfo.tag, elInfo.role, elInfo.inputType);
       if (keys === null) continue; // text input or non-interactive role — skip
-
+ 
       scannedCount++;
-
+ 
       // Snapshot state before activation
       const urlBefore = elInfo.urlBefore;
 
@@ -729,9 +889,9 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
           url: location.href,
           elementCount: document.querySelectorAll('*').length,
         })).catch(() => ({ url: urlBefore, elementCount: elInfo.elementCountBefore }));
-
+ 
         navigated = afterState.url !== urlBefore;
-
+ 
         if (navigated) {
           // Navigated away — go back
           await page.goBack({ waitUntil: 'load', timeout: 10000 }).catch(async () => {
@@ -754,13 +914,13 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
             break;
           }
         }
-
+ 
         const mutations = await collectMutations(page);
         const elementCountChanged = afterState.elementCount !== elInfo.elementCountBefore;
-
+ 
         if (mutations.length > 0 || elementCountChanged) {
           activated = true;
-
+ 
           // Check if a dialog opened
           const dialogState = await detectOpenDialog(page);
           if (dialogState.found) {
@@ -770,7 +930,7 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
             await page.screenshot({ path: dialogScreenshotPath, fullPage: false });
             screenshots.push(dialogScreenshotPath);
             console.log(chalk.dim(`    Phase 3g: dialog opened by ${elInfo.selector} → screenshot ${screenshotFilename}`));
-
+ 
             // Axe scan + all three dialog keyboard checks (focus placement,
             // element reachability, tab order) — all emitted as distinct issues.
             const dialogIssues = await scanDialogForIssues(page, dialogState.selector, scanUrl);
@@ -781,11 +941,11 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
             }
             const dialogKeyboardIssues = await auditDialog(page, dialogState.selector, scanUrl, elInfo.selector, dialogScreenshotPath);
             issues.push(...dialogKeyboardIssues);
-
+ 
             // Close the dialog
             await page.keyboard.press('Escape');
             await page.waitForTimeout(DIALOG_SETTLE_MS);
-
+ 
             // If still open, try clicking outside
             const stillOpen = await detectOpenDialog(page);
             if (stillOpen.found) {
@@ -793,10 +953,10 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
               await page.waitForTimeout(SETTLE_MS);
             }
           }
-
+ 
           break; // mutation observed — no need to try next key
         }
-
+ 
         // Re-inject observer for next key attempt
         await injectMutationObserver(page);
       }
@@ -812,7 +972,7 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
         delete window.__fa11yObs;
         delete window.__fa11yMutations;
       }).catch(() => {});
-
+ 
       // ── Click fallback: even if keyboard failed, try a click to reveal any
       // dialog/modal the element opens so we can screenshot and scan it.
       // We still flag focusable-no-action because keyboard activation is broken.
@@ -852,7 +1012,7 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
                 await page.screenshot({ path: dialogScreenshotPath, fullPage: false });
                 screenshots.push(dialogScreenshotPath);
                 console.log(chalk.dim(`    Phase 3g: dialog opened by click fallback on ${elInfo.selector} → screenshot ${screenshotFilename}`));
-
+ 
                 const dialogIssues = await scanDialogForIssues(page, dialogState.selector, scanUrl);
                 for (const issue of dialogIssues) {
                   issue.triggerSelector = elInfo.selector;
@@ -865,7 +1025,7 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
                   issue.activatedBy = 'click-fallback';
                   issues.push(issue);
                 }
-
+ 
                 await page.keyboard.press('Escape');
                 await page.waitForTimeout(DIALOG_SETTLE_MS);
                 const stillOpen = await detectOpenDialog(page);
@@ -901,19 +1061,19 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
           keysAttempted: keys,
         });
       }
-
+ 
       // Ensure any open state is closed before next element
       await page.keyboard.press('Escape').catch(() => {});
       await page.waitForTimeout(200);
-
+ 
       // Release the ElementHandle so the JS engine can GC the backing DOM reference
       await activeHandle.dispose().catch(() => {});
     }
-
+ 
     await browser.close();
-
+ 
     console.log(chalk.dim(`  Phase 3g: ${scannedCount} element(s) checked, ${noActionCount} no-action, ${dialogCount} dialog(s) opened, ${issues.length} issue(s)`));
-
+ 
     return { issues, screenshots, scannedCount, scanFailed: false };
   } catch (err) {
     if (browser) await browser.close().catch(() => {});
