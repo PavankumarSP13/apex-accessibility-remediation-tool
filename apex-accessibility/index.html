@@ -18,6 +18,28 @@
         <h1>TextStack AI support portal</h1>
         <p class="subtitle">This intake form is used to test the AI accessibility remediation workflow against local demo content.</p>
 
+        <section class="composer-section" aria-labelledby="composers-heading">
+          <h2 id="composers-heading">Danish Composers</h2>
+          <div class="composer-tabs" role="tablist" aria-label="Danish composers">
+            <button id="tab-ahlefeldt" class="composer-tab" type="button" role="tab" aria-selected="true" aria-controls="panel-ahlefeldt" tabindex="0">Maria Ahlefeldt</button>
+            <button id="tab-andersen" class="composer-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-andersen" tabindex="-1">Carl Andersen</button>
+            <button id="tab-fonseca" class="composer-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-fonseca" tabindex="-1">Ida da Fonseca</button>
+            <button id="tab-muller" class="composer-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-muller" tabindex="-1">Peter Müller</button>
+          </div>
+          <div id="panel-ahlefeldt" class="composer-panel" role="tabpanel" aria-labelledby="tab-ahlefeldt" tabindex="-1">
+            <p><a href="https://en.wikipedia.org/wiki/Maria_Theresia_Ahlefeldt">Maria Theresia Ahlefeldt</a> (16 January 1755–20 December 1810) was a Danish composer of German origin. She is regarded as Denmark’s first female composer and wrote music for ballets, operas, and plays at the royal theatre.</p>
+          </div>
+          <div id="panel-andersen" class="composer-panel" role="tabpanel" aria-labelledby="tab-andersen" tabindex="-1" hidden>
+            <p>Carl Joachim Andersen (1847–1909) was a Danish flautist, conductor, and composer. He is remembered for his work with the Royal Danish Orchestra and for his contributions to flute music.</p>
+          </div>
+          <div id="panel-fonseca" class="composer-panel" role="tabpanel" aria-labelledby="tab-fonseca" tabindex="-1" hidden>
+            <p>Ida Henriette da Fonseca (1802–1858) was a Danish opera singer and composer. Her work helped establish her as a notable musical figure in nineteenth-century Denmark.</p>
+          </div>
+          <div id="panel-muller" class="composer-panel" role="tabpanel" aria-labelledby="tab-muller" tabindex="-1" hidden>
+            <p>Peter Erasmus Lange-Müller (1850–1926) was a Danish composer and pianist. His compositions include songs, chamber music, and works for the stage.</p>
+          </div>
+        </section>
+
         <form class="demo-form" action="#" method="post">
           <input type="hidden" name="sessionid" value="demo-123" />
 
@@ -137,6 +159,45 @@
       const helpLink = document.getElementById('help-link');
       const dialog = document.getElementById('dialog-help');
       const closeBtn = document.querySelector('.close-btn');
+
+      const composerTabs = Array.from(document.querySelectorAll('[role="tab"]'));
+
+      function activateComposerTab(tab, moveFocus) {
+        composerTabs.forEach(function (candidate) {
+          const selected = candidate === tab;
+          candidate.setAttribute('aria-selected', selected ? 'true' : 'false');
+          candidate.tabIndex = selected ? 0 : -1;
+          document.getElementById(candidate.getAttribute('aria-controls')).hidden = !selected;
+        });
+        if (moveFocus) tab.focus();
+      }
+
+      composerTabs.forEach(function (tab, index) {
+        tab.addEventListener('click', function () {
+          activateComposerTab(tab, false);
+        });
+        tab.addEventListener('keydown', function (event) {
+          let nextIndex;
+          switch (event.key) {
+            case 'ArrowRight':
+              nextIndex = (index + 1) % composerTabs.length;
+              break;
+            case 'ArrowLeft':
+              nextIndex = (index - 1 + composerTabs.length) % composerTabs.length;
+              break;
+            case 'Home':
+              nextIndex = 0;
+              break;
+            case 'End':
+              nextIndex = composerTabs.length - 1;
+              break;
+            default:
+              return;
+          }
+          event.preventDefault();
+          activateComposerTab(composerTabs[nextIndex], true);
+        });
+      });
 
       helpLink.addEventListener('click', function (event) {
         event.preventDefault();
