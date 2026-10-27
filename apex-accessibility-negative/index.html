@@ -18,6 +18,32 @@
         <h1>TextStack AI support portal</h1>
         <p class="subtitle">Negative test page: every dropdown below is broken in exactly one keyboard behaviour, so the dropdown keyboard scan should report each of them.</p>
 
+<!-- this changes related tab functionality-->
+
+         <section class="composer-section" aria-labelledby="composers-title">
+          <h2 id="composers-title">Danish Composers</h2>
+          <div class="composer-tabs" role="tablist" aria-label="Danish composers">
+            <button class="composer-tab" id="tab-maria" type="button" role="tab" aria-selected="true" aria-controls="panel-maria" tabindex="0">Maria Ahlefeldt</button>
+            <button class="composer-tab" id="tab-carl" type="button" role="tab" aria-selected="false" aria-controls="panel-carl" tabindex="0">Carl Andersen</button>
+            <button class="composer-tab" id="tab-ida" type="button" role="tab" aria-selected="false" aria-controls="panel-ida" tabindex="0">Ida da Fonseca</button>
+            <button class="composer-tab" id="tab-peter" type="button" role="tab" aria-selected="false" aria-controls="panel-peter" tabindex="0">Peter Müller</button>
+          </div>
+          <div class="composer-panel" id="panel-maria" role="tabpanel" aria-labelledby="tab-maria" tabindex="-1">
+            <p><a href="#panel-maria" tabindex="-1">Maria Theresia Ahlefeldt</a> (16 January 1755 – 20 December 1810) was a Danish, (originally German), composer. She is known as the first female composer in Denmark. Maria Theresia composed music for several ballets, operas, and plays of the royal theatre. She was given good critic as a composer and described as a ‘virkelig Tonekunstnerinde’ ('a True Artist of Music').</p>
+          </div>
+          <div class="composer-panel" id="panel-carl" role="tabpanel" aria-labelledby="tab-carl" tabindex="-1" hidden>
+            <p>Composer profile: Carl Andersen.</p>
+          </div>
+          <div class="composer-panel" id="panel-ida" role="tabpanel" aria-labelledby="tab-ida" tabindex="-1" hidden>
+            <p>Composer profile: Ida da Fonseca.</p>
+          </div>
+          <div class="composer-panel" id="panel-peter" role="tabpanel" aria-labelledby="tab-peter" tabindex="-1" hidden>
+            <p>Composer profile: Peter Müller.</p>
+          </div>
+        </section>
+
+  <!-- end with tab functionality code changes-->
+
         <form class="demo-form" action="#" method="post">
           <input type="hidden" name="sessionid" value="demo-123" />
 
