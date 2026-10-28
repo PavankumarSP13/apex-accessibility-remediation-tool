@@ -154,12 +154,21 @@ function countByLooseFingerprint(issues) {
   return counts;
 }
 
+// Selector-independent key: rule + page + element markup. Scanners like pa11y build
+// selectors from the nearest ancestor id, so a fix that adds an id (e.g. <main id>)
+// rewrites selectors of untouched elements without changing the element itself.
+function elementMatchKey(issue, fp) {
+  if (!fp.element) return null;
+  return `${fp.ruleId}|${issue.page || ''}|${fp.element}`;
+}
+
 export function computeIntroducedIssues(beforeData, afterData, knownNonFixableFingerprints = null) {
-  const beforeCounts = countByLooseFingerprint(normalizeScanIssues(beforeData, { includeLighthouse: false }));
+  const beforeIssues = normalizeScanIssues(beforeData, { includeLighthouse: false }).filter(isScoredRuntimeIssue);
+  const beforeCounts = countByLooseFingerprint(beforeIssues);
   const afterIssues = normalizeScanIssues(afterData, { includeLighthouse: false }).filter(isScoredRuntimeIssue);
   const afterCounts = countByLooseFingerprint(afterIssues);
   const consumed = new Map();
-  const introduced = [];
+  const candidates = [];
 
   for (const issue of afterIssues) {
     const fp = createIssueFingerprint(issue);
@@ -169,6 +178,31 @@ export function computeIntroducedIssues(beforeData, afterData, knownNonFixableFi
     const used = consumed.get(fp.looseKey) || 0;
     if (introducedCount === 0 || used >= introducedCount) continue;
     consumed.set(fp.looseKey, used + 1);
+    candidates.push({ issue, fp });
+  }
+
+  // Second pass: before-issues not matched by selector can still absorb an after-issue
+  // with the same rule and identical element markup (selector drift, not a regression).
+  const unmatchedBefore = new Map();
+  const beforeMatched = new Map();
+  for (const issue of beforeIssues) {
+    const fp = createIssueFingerprint(issue);
+    const afterCount = afterCounts.get(fp.looseKey) || 0;
+    const seen = beforeMatched.get(fp.looseKey) || 0;
+    beforeMatched.set(fp.looseKey, seen + 1);
+    if (seen < afterCount) continue;
+    const key = elementMatchKey(issue, fp);
+    if (key) unmatchedBefore.set(key, (unmatchedBefore.get(key) || 0) + 1);
+  }
+
+  const introduced = [];
+  for (const { issue, fp } of candidates) {
+    const key = elementMatchKey(issue, fp);
+    const available = key ? (unmatchedBefore.get(key) || 0) : 0;
+    if (available > 0) {
+      unmatchedBefore.set(key, available - 1);
+      continue;
+    }
     introduced.push({
       fingerprint: fp.key,
       source: issue.source,
