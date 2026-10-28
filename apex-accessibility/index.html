@@ -147,7 +147,7 @@
       </main>
     </div>
 
-    <div id="dialog-help" role="dialog" aria-modal="false" aria-labelledby="dialog-title" class="support-dialog">
+    <div id="dialog-help" role="dialog" aria-modal="true" aria-labelledby="dialog-title" class="support-dialog" tabindex="-1" hidden>
       <div class="dialog-panel">
         <h2 id="dialog-title">Need help?</h2>
         <p>Our support team usually replies within 1 business day.</p>
@@ -199,13 +199,76 @@
         });
       });
 
+      // Accessible modal-dialog behavior:
+      // 1. Move focus into the dialog when it opens.
+      // 2. Keep Tab / Shift+Tab focus within the open modal.
+      // 3. Close on Escape and restore focus to the invoking link.
+      const pageShell = document.querySelector('.page-shell');
+      let dialogReturnFocus = null;
+
+      function getDialogFocusableElements() {
+        return Array.from(
+          dialog.querySelectorAll(
+            'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          )
+        ).filter(function (element) {
+          return !element.hidden && element.getAttribute('aria-hidden') !== 'true';
+        });
+      }
+
+      function openHelpDialog() {
+        dialogReturnFocus = document.activeElement;
+        dialog.hidden = false;
+        pageShell.inert = true;
+        const focusableElements = getDialogFocusableElements();
+        if (focusableElements.length > 0) {
+          focusableElements[0].focus();
+        } else {
+          dialog.focus();
+        }
+      }
+
+      function closeHelpDialog() {
+        dialog.hidden = true;
+        pageShell.inert = false;
+        if (dialogReturnFocus && typeof dialogReturnFocus.focus === 'function') {
+          dialogReturnFocus.focus();
+        }
+      }
+
       helpLink.addEventListener('click', function (event) {
         event.preventDefault();
-        dialog.style.display = 'block';
+        openHelpDialog();
       });
 
-      closeBtn.addEventListener('click', function () {
-        dialog.style.display = 'none';
+      closeBtn.addEventListener('click', closeHelpDialog);
+
+      dialog.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeHelpDialog();
+          return;
+        }
+
+        if (event.key !== 'Tab') return;
+
+        const focusableElements = getDialogFocusableElements();
+        if (focusableElements.length === 0) {
+          event.preventDefault();
+          dialog.focus();
+          return;
+        }
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (event.shiftKey && (document.activeElement === firstElement || !dialog.contains(document.activeElement))) {
+          event.preventDefault();
+          lastElement.focus();
+        } else if (!event.shiftKey && (document.activeElement === lastElement || !dialog.contains(document.activeElement))) {
+          event.preventDefault();
+          firstElement.focus();
+        }
       });
 
       const dropdown = document.getElementById('priority-dropdown');
