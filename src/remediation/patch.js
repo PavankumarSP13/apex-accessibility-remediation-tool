@@ -65,6 +65,10 @@ const EVENT_KEY_WRONG_CASING = {
   f7: 'F7', f8: 'F8', f9: 'F9', f10: 'F10', f11: 'F11', f12: 'F12',
 };
 
+// Legacy event.key values emitted by old Edge/IE and Firefox < 37. Code commonly
+// checks these alongside the modern value (e.g. key === ' ' || key === 'Spacebar').
+const LEGACY_EVENT_KEY_VALUES = new Set(['Spacebar', 'Esc']);
+
 function checkEventKeyCasing(content) {
   // Match: .key === 'value', .key !== 'value', .key == 'value'
   const keyPattern = /\.key\s*[!=]==?\s*['"]([^'"]+)['"]/g;
@@ -72,6 +76,7 @@ function checkEventKeyCasing(content) {
   let m;
   while ((m = keyPattern.exec(content)) !== null) {
     const used = m[1];
+    if (LEGACY_EVENT_KEY_VALUES.has(used)) continue;
     const correct = EVENT_KEY_WRONG_CASING[used.toLowerCase()];
     if (correct && used !== correct) {
       warnings.push(`event.key value '${used}' should be '${correct}' (wrong casing — see MDN KeyboardEvent.key)`);
