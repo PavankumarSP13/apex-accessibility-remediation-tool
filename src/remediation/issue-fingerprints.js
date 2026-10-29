@@ -113,7 +113,7 @@ export function normalizeInteractionScanIssues(interactionResult = {}) {
 export function normalizeDropdownKeyboardScanIssues(dropdownKeyboardResult = {}) {
   if (dropdownKeyboardResult?.scanFailed === true) return [];
   return (dropdownKeyboardResult?.issues || []).map(issue => ({
-    source: 'dropdown-keyboard',
+    source: issue.source || 'dropdown-keyboard',
     page: issue.page || '',
     ruleId: issue.ruleId || 'dropdown-keyboard-unknown',
     impact: issue.impact || 'serious',

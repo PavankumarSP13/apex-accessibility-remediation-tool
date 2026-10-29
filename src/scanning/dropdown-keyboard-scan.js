@@ -6,6 +6,7 @@ import { relaxTlsVerifyForUrl } from '../core/cli.js';
 import { logger } from '../core/logger.js';
 
 const SOURCE = 'dropdown-keyboard';
+const RADIO_SOURCE = 'radio-keyboard';
 const SETTLE_MS = 400;
 const RELOAD_STABILITY_MS = 8000;
 const MAX_TAB_STOPS = 200;
@@ -125,7 +126,7 @@ async function scopeIntact(scope) {
 function makeIssue(scope, ruleId, impact, description, el, fix, helpUrl, extra = {}) {
   const where = scope.context === 'dialog' ? `Inside a dialog (opened by ${scope.triggerSelector}): ` : '';
   return {
-    source: SOURCE,
+    source: ruleId.startsWith('radio-group-') ? RADIO_SOURCE : SOURCE,
     ruleId,
     impact,
     description: where + description,

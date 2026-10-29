@@ -1089,7 +1089,7 @@ export async function phase4_analyzeAndMap(axeResults, lhResult, pa11yResult, re
         // Prefix must not form a plugin signature with the rule id (e.g. "ddk-dropdown" contains Kendo's "k-dropdown").
         id: `kbnav-${issue.ruleId}-${instanceCounter++}`,
         ruleId: issue.ruleId,
-        source: 'dropdown-keyboard',
+        source: issue.source || 'dropdown-keyboard',
         impact: issue.impact,
         description: issue.description,
         helpUrl: issue.helpUrl || null,
@@ -1121,7 +1121,7 @@ export async function phase4_analyzeAndMap(axeResults, lhResult, pa11yResult, re
   }
 
   // Deduplicate, preferring direct file/line evidence and stronger sources
-  const sourceRank = { axe: 4, keyboard: 4, 'focusable-action': 4, 'dropdown-keyboard': 4, 'image-alt': 4, interaction: 3, pa11y: 3, lighthouse: 2 };
+  const sourceRank = { axe: 4, keyboard: 4, 'focusable-action': 4, 'dropdown-keyboard': 4, 'radio-keyboard': 4, 'image-alt': 4, interaction: 3, pa11y: 3, lighthouse: 2 };
   const seen = new Map();
   const normalizeDedupeText = (value, maxLen = 280) => String(value || '')
     .replace(/\s+/g, ' ')
