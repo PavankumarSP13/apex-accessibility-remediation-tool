@@ -147,7 +147,7 @@ async function rescanOnlyMode(runDir) {
 
   // Generate Excel
   try {
-    await generateExcelReport(fixes, null, analysis, scanUrl, verification);
+    await generateExcelReport(fixes, null, analysis, scanUrl, verification, null, prevReport.before);
   } catch (err) {
     console.error(chalk.yellow(`  ⚠ Excel report generation failed: ${err.message}`));
   }
@@ -665,7 +665,7 @@ export async function main() {
 
       if (!pipelineError && reportWriteMode === 'full') {
         try {
-          await generateExcelReport(report.fixes || [], sourceFileMap, report.analysis, scanUrl, report.verification || null, report.goodToHave ?? null);
+          await generateExcelReport(report.fixes || [], sourceFileMap, report.analysis, scanUrl, report.verification || null, report.goodToHave ?? null, report.before);
         } catch (err) {
           console.error(chalk.red(`\n  ⚠ Excel report generation failed: ${err.message}\n`));
           logger.warn(`Excel report generation failed: ${err.message}`);

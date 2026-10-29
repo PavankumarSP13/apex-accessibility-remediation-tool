@@ -111,8 +111,34 @@ function attachConsistencyAssertion(data, consistency) {
   };
 }
 
-export async function generateExcelReport(fixes, sourceFileMap, analysis, scanUrl, verification = null, goodToHave = null) {
-  const outDir    = path.resolve(opts.output);
+function getDialogIssues(analysis, before = null) {
+  const candidates = [
+    ...(analysis?.unified || []),
+    ...(analysis?.allIssues || []),
+    ...(analysis?.permanentlyManualViolations || []),
+    ...(analysis?.closedIssues || []),
+    ...(before?.focusableAction?.issues || []),
+  ];
+  const seen = new Set();
+  return candidates.filter(issue => {
+    if (issue.context !== 'dialog' && !String(issue.ruleId || '').startsWith('dialog-')) return false;
+    const fingerprint = [
+      issue.page || '',
+      issue.ruleId || '',
+      issue.triggerSelector || '',
+      issue.dialogSelector || '',
+      issue.nodes?.[0]?.target || '',
+      issue.nodes?.[0]?.html || issue.element || '',
+    ].join('|');
+    const key = fingerprint.replace(/\|/g, '') ? fingerprint : issue.id;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export async function generateExcelReport(fixes, sourceFileMap, analysis, scanUrl, verification = null, goodToHave = null, before = null) {
+  const outDir    = logger.dir || path.resolve(opts.output);
   await fs.mkdir(outDir, { recursive: true });
   const excelPath = path.join(outDir, 'files-changed-report.xlsx');
 
@@ -154,6 +180,37 @@ export async function generateExcelReport(fixes, sourceFileMap, analysis, scanUr
     const mappingSource = urlRefs.length > 0 ? 'identifySourceFilesForUrl' : pageUrl ? 'phase4 mapping' : '';
     const fileViolations = analysis?.mapping?.filter(m => m.file === fix.file).map(m => analysis.unified?.find(v => v.id === m.violationId)).filter(Boolean) || [];
     sheet1.addRow({ file: fix.file, url: mappedUrl, mappingSource, violationsAddressed: fix.violationsAddressed, impactLevels: [...new Set(fileViolations.map(v => v.impact))].join(', ') || 'N/A' });
+  }
+
+  const dialogIssues = getDialogIssues(analysis, before);
+  const dialogSheet = workbook.addWorksheet('Dialog Accessibility');
+  dialogSheet.columns = [
+    { header: 'Rule ID', key: 'ruleId', width: 30 },
+    { header: 'Impact', key: 'impact', width: 14 },
+    { header: 'Description', key: 'description', width: 65 },
+    { header: 'Page', key: 'page', width: 45 },
+    { header: 'Trigger Button', key: 'triggerSelector', width: 40 },
+    { header: 'Dialog', key: 'dialogSelector', width: 35 },
+    { header: 'Element', key: 'element', width: 60 },
+    { header: 'Fix', key: 'fix', width: 65 },
+    { header: 'Activated By', key: 'activatedBy', width: 18 },
+    { header: 'Screenshot', key: 'screenshotPath', width: 55 },
+  ];
+  dialogSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  dialogSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0891B2' } };
+  for (const issue of dialogIssues) {
+    dialogSheet.addRow({
+      ruleId: issue.ruleId || '',
+      impact: issue.impact || '',
+      description: issue.description || '',
+      page: issue.page || '',
+      triggerSelector: issue.triggerSelector || '',
+      dialogSelector: issue.dialogSelector || '',
+      element: issue.element || issue.nodes?.[0]?.html || issue.nodes?.[0]?.target || '',
+      fix: issue.fix || issue.nodes?.[0]?.fix || '',
+      activatedBy: issue.activatedBy || '',
+      screenshotPath: issue.screenshotPath || '',
+    });
   }
 
   if (sourceFileMap) {
@@ -379,6 +436,7 @@ export function buildHTML({ before, after, analysis, fixes, judgment, verificati
   const sorted = [...(analysis?.unified ?? [])].sort(
     (a, b) => impactRank(a.impact) - impactRank(b.impact)
   );
+  const dialogIssues = getDialogIssues(analysis, before);
   const IMPACT_COLOR  = { critical:'#dc2626', serious:'#ea580c', moderate:'#d97706', minor:'#16a34a' };
   const SOURCE_COLOR  = { 'axe':'#2563eb', 'lighthouse':'#7c3aed', 'pa11y':'#d97706', 'keyboard':'#059669', 'image-alt':'#dc2626', 'focusable-action':'#0891b2', 'dropdown-keyboard':'#be185d' };
   const badge  = (impact) =>
@@ -913,6 +971,33 @@ export function buildHTML({ before, after, analysis, fixes, judgment, verificati
     </table>
   </div>` : '<p style="color:#64748b;font-size:.85rem">All issues are fixable — no manual review needed.</p>'}`;
   })()}
+
+  <h2>Dialog Accessibility Findings (${dialogIssues.length})</h2>
+  ${dialogIssues.length > 0 ? `
+  <table>
+    <thead>
+      <tr>
+        <th>Impact</th>
+        <th>Rule</th>
+        <th>Trigger Button</th>
+        <th>Dialog</th>
+        <th>Element</th>
+        <th>Description</th>
+        <th>Fix</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${dialogIssues.map(issue => `<tr>
+        <td>${badge(issue.impact)}</td>
+        <td><code>${escapeHtml(issue.ruleId || '')}</code></td>
+        <td>${escapeHtml(issue.triggerSelector || '—')}</td>
+        <td>${escapeHtml(issue.dialogSelector || '—')}</td>
+        <td>${escapeHtml(issue.element || issue.nodes?.[0]?.html || issue.nodes?.[0]?.target || '—')}</td>
+        <td>${escapeHtml(issue.description || '')}</td>
+        <td class="fix">${escapeHtml(issue.fix || issue.nodes?.[0]?.fix || '—')}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>` : '<p style="color:#64748b;font-size:.85rem">No dialog accessibility findings detected.</p>'}
 
   <h2>All Violations (${sorted.length})</h2>
   <table>

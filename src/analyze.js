@@ -1077,6 +1077,7 @@ export async function phase4_analyzeAndMap(axeResults, lhResult, pa11yResult, re
         triggerSelector: issue.triggerSelector || null,
         dialogSelector: issue.dialogSelector || null,
         screenshotPath: issue.screenshotPath || null,
+        activatedBy: issue.activatedBy || null,
         keysAttempted: issue.keysAttempted || null,
         context: issue.context || null,
       });
@@ -1138,9 +1139,12 @@ export async function phase4_analyzeAndMap(axeResults, lhResult, pa11yResult, re
     const fallbackContextSig = [targetSig, descriptionSig, fixSig, helpSig].filter(Boolean).join('|') || 'document-level';
     const contextSig = elementSig || fallbackContextSig;
     const pageSig = (v.page ?? v.file ?? '').toLowerCase();
+    const dialogContext = v.context === 'dialog' || String(v.ruleId || '').startsWith('dialog-')
+      ? `${v.dialogSelector || ''}|${v.triggerSelector || ''}`
+      : '';
     const dedupKey = elementSig
-      ? `${pageSig}|${contextSig}|${v.ruleId ?? v.id}`
-      : `${pageSig}|${sourceSig}|${contextSig}|${v.ruleId ?? v.id}`;
+      ? `${pageSig}|${contextSig}|${v.ruleId ?? v.id}|${dialogContext}`
+      : `${pageSig}|${sourceSig}|${contextSig}|${v.ruleId ?? v.id}|${dialogContext}`;
     const existing = seen.get(dedupKey);
     if (!existing) { seen.set(dedupKey, v); continue; }
     const existingScore = (existing.file ? 30 : 0) + (existing.line ? 20 : 0) + ((existing.nodes?.length || 0) * 3) + (sourceRank[existing.source] || 0);

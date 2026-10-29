@@ -203,7 +203,7 @@ async function injectMutationObserver(page) {
         }
       }
     });
-    window.__fa11yObs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'aria-hidden', 'aria-checked', 'aria-expanded', 'aria-modal'] });
+    window.__fa11yObs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'open', 'aria-hidden', 'aria-checked', 'aria-expanded', 'aria-modal'] });
   });
 }
  
@@ -264,10 +264,17 @@ async function restoreFocusAfterReload(page, elementDomPath) {
 export async function detectOpenDialog(page) {
   return page.evaluate(() => {
     // 1. role=dialog or role=alertdialog that is visible
-    for (const el of document.querySelectorAll('[role="dialog"],[role="alertdialog"]')) {
+    for (const el of document.querySelectorAll('dialog[open],[role="dialog"],[role="alertdialog"]')) {
       const style = getComputedStyle(el);
       if (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
-        return { found: true, selector: el.id ? `#${el.id}` : '[role="dialog"]' };
+        return {
+          found: true,
+          selector: el.id
+            ? `#${el.id}`
+            : el.matches('dialog[open]')
+              ? 'dialog[open]'
+              : el.getAttribute('role') === 'alertdialog' ? '[role="alertdialog"]' : '[role="dialog"]',
+        };
       }
     }
     // 2. aria-modal=true visible
