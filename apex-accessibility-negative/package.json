@@ -1,0 +1,10 @@
+{
+  "name": "textstack-a11y-negative-demo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Replica of the TextStack demo where every dropdown is deliberately broken in exactly one keyboard behaviour.",
+  "scripts": {
+    "start": "node server.js",
+    "scan": "node ../accessibility-remediation-tool/agent.js --url http://localhost:4174/ --output ./a11y-report"
+  }
+}

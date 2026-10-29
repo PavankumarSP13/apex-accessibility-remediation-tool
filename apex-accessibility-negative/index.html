@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TextStack AI Support Portal (negative dropdown cases)</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero-image-wrap">
+          <img src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=800&q=80" alt="" />
+        </div>
+      </header>
+
+      <main class="support-card">
+        <h1>TextStack AI support portal</h1>
+        <p class="subtitle">Negative test page: every dropdown below is broken in exactly one keyboard behaviour, so the dropdown keyboard scan should report each of them.</p>
+
+<!-- this changes related tab functionality-->
+
+         <section class="composer-section" aria-labelledby="composers-title">
+          <h2 id="composers-title">Danish Composers</h2>
+          <div class="composer-tabs" role="tablist" aria-label="Danish composers">
+            <button class="composer-tab" id="tab-maria" type="button" role="tab" aria-selected="true" aria-controls="panel-maria" tabindex="0">Maria Ahlefeldt</button>
+            <button class="composer-tab" id="tab-carl" type="button" role="tab" aria-selected="false" aria-controls="panel-carl" tabindex="0">Carl Andersen</button>
+            <button class="composer-tab" id="tab-ida" type="button" role="tab" aria-selected="false" aria-controls="panel-ida" tabindex="0">Ida da Fonseca</button>
+            <button class="composer-tab" id="tab-peter" type="button" role="tab" aria-selected="false" aria-controls="panel-peter" tabindex="0">Peter Müller</button>
+          </div>
+          <div class="composer-panel" id="panel-maria" role="tabpanel" aria-labelledby="tab-maria" tabindex="-1">
+            <p><a href="#panel-maria" tabindex="-1">Maria Theresia Ahlefeldt</a> (16 January 1755 – 20 December 1810) was a Danish, (originally German), composer. She is known as the first female composer in Denmark. Maria Theresia composed music for several ballets, operas, and plays of the royal theatre. She was given good critic as a composer and described as a ‘virkelig Tonekunstnerinde’ ('a True Artist of Music').</p>
+          </div>
+          <div class="composer-panel" id="panel-carl" role="tabpanel" aria-labelledby="tab-carl" tabindex="-1" hidden>
+            <p>Composer profile: Carl Andersen.</p>
+          </div>
+          <div class="composer-panel" id="panel-ida" role="tabpanel" aria-labelledby="tab-ida" tabindex="-1" hidden>
+            <p>Composer profile: Ida da Fonseca.</p>
+          </div>
+          <div class="composer-panel" id="panel-peter" role="tabpanel" aria-labelledby="tab-peter" tabindex="-1" hidden>
+            <p>Composer profile: Peter Müller.</p>
+          </div>
+        </section>
+
+  <!-- end with tab functionality code changes-->
+
+        <form class="demo-form" action="#" method="post">
+          <input type="hidden" name="sessionid" value="demo-123" />
+
+          <!-- NEGATIVE 01 · Tab reaches the trigger. The trigger has no tabindex, so Tab skips it.
+               Expected: dropdown-trigger-not-reachable -->
+          <div class="field">
+            <p class="group-title" id="c01-label">Case 1: Tab does not reach this dropdown</p>
+            <div class="custom-dropdown" id="c01-dropdown">
+              <div class="custom-dropdown-toggle" id="c01-toggle" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-controls="c01-listbox" aria-labelledby="c01-label c01-toggle">
+                <span class="custom-dropdown-value">Select priority</span>
+              </div>
+              <ul class="custom-dropdown-list" id="c01-listbox" role="listbox" aria-labelledby="c01-label" tabindex="-1">
+                <li id="c01-opt-low" role="option" aria-selected="false" data-value="low">Low</li>
+                <li id="c01-opt-medium" role="option" aria-selected="false" data-value="medium">Medium</li>
+                <li id="c01-opt-high" role="option" aria-selected="false" data-value="high">High</li>
+                <li id="c01-opt-urgent" role="option" aria-selected="false" data-value="urgent">Urgent</li>
+                <li id="c01-opt-critical" role="option" aria-selected="false" data-value="critical">Critical</li>
+                <li id="c01-opt-blocker" role="option" aria-selected="false" data-value="blocker">Blocker</li>
+              </ul>
+              <input type="hidden" name="c01-priority" value="" />
+            </div>
+          </div>
+
+          <!-- NEGATIVE 02 · Enter opens. Enter is not handled on the trigger.
+               Expected: dropdown-enter-not-activating -->
+          <div class="field">
+            <p class="group-title" id="c02-label">Case 2: Enter does not open this dropdown</p>
+            <div class="custom-dropdown" id="c02-dropdown">
+              <div class="custom-dropdown-toggle" id="c02-toggle" role="combobox" tabindex="0" aria-haspopup="listbox" aria-expanded="false" aria-controls="c02-listbox" aria-labelledby="c02-label c02-toggle">
+                <span class="custom-dropdown-value">Select priority</span>
+              </div>
+              <ul class="custom-dropdown-list" id="c02-listbox" role="listbox" aria-labelledby="c02-label" tabindex="-1">
+                <li id="c02-opt-low" role="option" aria-selected="false" data-value="low">Low</li>
+                <li id="c02-opt-medium" role="option" aria-selected="false" data-value="medium">Medium</li>
+                <li id="c02-opt-high" role="option" aria-selected="false" data-value="high">High</li>
+                <li id="c02-opt-urgent" role="option" aria-selected="false" data-value="urgent">Urgent</li>
+                <li id="c02-opt-critical" role="option" aria-selected="false" data-value="critical">Critical</li>
+                <li id="c02-opt-blocker" role="option" aria-selected="false" data-value="blocker">Blocker</li>
+              </ul>
+              <input type="hidden" name="c02-priority" value="" />
+            </div>
+          </div>
+
+          <!-- NEGATIVE 03 · Space opens. Space is not handled on the trigger, so the page scrolls instead.
+               Expected: dropdown-space-not-activating -->
+          <div class="field">
+            <p class="group-title" id="c03-label">Case 3: Space does not open this dropdown</p>
+            <div class="custom-dropdown" id="c03-dropdown">
+              <div class="custom-dropdown-toggle" id="c03-toggle" role="combobox" tabindex="0" aria-haspopup="listbox" aria-expanded="false" aria-controls="c03-listbox" aria-labelledby="c03-label c03-toggle">
+                <span class="custom-dropdown-value">Select priority</span>
+              </div>
+              <ul class="custom-dropdown-list" id="c03-listbox" role="listbox" aria-labelledby="c03-label" tabindex="-1">
+                <li id="c03-opt-low" role="option" aria-selected="false" data-value="low">Low</li>
+                <li id="c03-opt-medium" role="option" aria-selected="false" data-value="medium">Medium</li>
+                <li id="c03-opt-high" role="option" aria-selected="false" data-value="high">High</li>
+                <li id="c03-opt-urgent" role="option" aria-selected="false" data-value="urgent">Urgent</li>
+                <li id="c03-opt-critical" role="option" aria-selected="false" data-value="critical">Critical</li>
+                <li id="c03-opt-blocker" role="option" aria-selected="false" data-value="blocker">Blocker</li>
+              </ul>
+              <input type="hidden" name="c03-priority" value="" />
+            </div>
+          </div>
+
+
+          <!-- NEGATIVE 04 · Arrow keys move between items. ArrowUp/ArrowDown do nothing once the list is open.
+               Expected: dropdown-arrow-keys-not-supported -->
+          <div class="field">
+            <p class="group-title" id="c04-label">Case 4: Arrow keys do not move through this list</p>
+            <div class="custom-dropdown" id="c04-dropdown">
+              <div class="custom-dropdown-toggle" id="c04-toggle" role="combobox" tabindex="0" aria-haspopup="listbox" aria-expanded="false" aria-controls="c04-listbox" aria-labelledby="c04-label c04-toggle">
+                <span class="custom-dropdown-value">Select priority</span>
+              </div>
+              <ul class="custom-dropdown-list" id="c04-listbox" role="listbox" aria-labelledby="c04-label" tabindex="-1">
+                <li id="c04-opt-low" role="option" aria-selected="false" data-value="low">Low</li>
+                <li id="c04-opt-medium" role="option" aria-selected="false" data-value="medium">Medium</li>
+                <li id="c04-opt-high" role="option" aria-selected="false" data-value="high">High</li>
+                <li id="c04-opt-urgent" role="option" aria-selected="false" data-value="urgent">Urgent</li>
+                <li id="c04-opt-critical" role="option" aria-selected="false" data-value="critical">Critical</li>
+                <li id="c04-opt-blocker" role="option" aria-selected="false" data-value="blocker">Blocker</li>
+              </ul>
+              <input type="hidden" name="c04-priority" value="" />
+            </div>
+          </div>
+
+          <!-- NEGATIVE 05 · Escape closes. Escape is ignored, so the list stays open.
+               Expected: dropdown-escape-not-closing -->
+          <div class="field">
+            <p class="group-title" id="c05-label">Case 5: Escape does not close this list</p>
+            <div class="custom-dropdown" id="c05-dropdown">
+              <div class="custom-dropdown-toggle" id="c05-toggle" role="combobox" tabindex="0" aria-haspopup="listbox" aria-expanded="false" aria-controls="c05-listbox" aria-labelledby="c05-label c05-toggle">
+                <span class="custom-dropdown-value">Select priority</span>
+              </div>
+              <ul class="custom-dropdown-list" id="c05-listbox" role="listbox" aria-labelledby="c05-label" tabindex="-1">
+                <li id="c05-opt-low" role="option" aria-selected="false" data-value="low">Low</li>
+                <li id="c05-opt-medium" role="option" aria-selected="false" data-value="medium">Medium</li>
+                <li id="c05-opt-high" role="option" aria-selected="false" data-value="high">High</li>
+                <li id="c05-opt-urgent" role="option" aria-selected="false" data-value="urgent">Urgent</li>
+                <li id="c05-opt-critical" role="option" aria-selected="false" data-value="critical">Critical</li>
+                <li id="c05-opt-blocker" role="option" aria-selected="false" data-value="blocker">Blocker</li>
+              </ul>
+              <input type="hidden" name="c05-priority" value="" />
+            </div>
+          </div>
+
+          <!-- NEGATIVE 06 · Focus returns to the trigger. Escape closes the list but drops focus.
+               Expected: dropdown-focus-not-returned -->
+          <div class="field">
+            <p class="group-title" id="c06-label">Case 6: Focus is lost after Escape closes this list</p>
+            <div class="custom-dropdown" id="c06-dropdown">
+              <div class="custom-dropdown-toggle" id="c06-toggle" role="combobox" tabindex="0" aria-haspopup="listbox" aria-expanded="false" aria-controls="c06-listbox" aria-labelledby="c06-label c06-toggle">
+                <span class="custom-dropdown-value">Select priority</span>
+              </div>
+              <ul class="custom-dropdown-list" id="c06-listbox" role="listbox" aria-labelledby="c06-label" tabindex="-1">
+                <li id="c06-opt-low" role="option" aria-selected="false" data-value="low">Low</li>
+                <li id="c06-opt-medium" role="option" aria-selected="false" data-value="medium">Medium</li>
+                <li id="c06-opt-high" role="option" aria-selected="false" data-value="high">High</li>
+                <li id="c06-opt-urgent" role="option" aria-selected="false" data-value="urgent">Urgent</li>
+                <li id="c06-opt-critical" role="option" aria-selected="false" data-value="critical">Critical</li>
+                <li id="c06-opt-blocker" role="option" aria-selected="false" data-value="blocker">Blocker</li>
+              </ul>
+              <input type="hidden" name="c06-priority" value="" />
+            </div>
+          </div>
+
+          <!-- NEGATIVE 07 · Items aren't Tab stops. Every option has tabindex="0".
+               Expected: dropdown-items-in-tab-order -->
+          <div class="field">
+            <p class="group-title" id="c07-label">Case 7: Every item in this list is a Tab stop</p>
+            <div class="custom-dropdown" id="c07-dropdown">
+              <div class="custom-dropdown-toggle" id="c07-toggle" role="combobox" tabindex="0" aria-haspopup="listbox" aria-expanded="false" aria-controls="c07-listbox" aria-labelledby="c07-label c07-toggle">
+                <span class="custom-dropdown-value">Select priority</span>
+              </div>
+              <ul class="custom-dropdown-list" id="c07-listbox" role="listbox" aria-labelledby="c07-label" tabindex="-1">
+                <li id="c07-opt-low" role="option" tabindex="0" aria-selected="false" data-value="low">Low</li>
+                <li id="c07-opt-medium" role="option" tabindex="0" aria-selected="false" data-value="medium">Medium</li>
+                <li id="c07-opt-high" role="option" tabindex="0" aria-selected="false" data-value="high">High</li>
+                <li id="c07-opt-urgent" role="option" tabindex="0" aria-selected="false" data-value="urgent">Urgent</li>
+                <li id="c07-opt-critical" role="option" tabindex="0" aria-selected="false" data-value="critical">Critical</li>
+                <li id="c07-opt-blocker" role="option" tabindex="0" aria-selected="false" data-value="blocker">Blocker</li>
+              </ul>
+              <input type="hidden" name="c07-priority" value="" />
+            </div>
+          </div>
+
+          <!-- NEGATIVE 08 (good-to-have) · Home / End do nothing in the open list.
+               Expected: dropdown-home-end-missing -->
+          <div class="field">
+            <p class="group-title" id="c08-label">Case 8: Home and End do nothing in this list</p>
+            <div class="custom-dropdown" id="c08-dropdown">
+              <div class="custom-dropdown-toggle" id="c08-toggle" role="combobox" tabindex="0" aria-haspopup="listbox" aria-expanded="false" aria-controls="c08-listbox" aria-labelledby="c08-label c08-toggle">
+                <span class="custom-dropdown-value">Select priority</span>
+              </div>
+              <ul class="custom-dropdown-list" id="c08-listbox" role="listbox" aria-labelledby="c08-label" tabindex="-1">
+                <li id="c08-opt-low" role="option" aria-selected="false" data-value="low">Low</li>
+                <li id="c08-opt-medium" role="option" aria-selected="false" data-value="medium">Medium</li>
+                <li id="c08-opt-high" role="option" aria-selected="false" data-value="high">High</li>
+                <li id="c08-opt-urgent" role="option" aria-selected="false" data-value="urgent">Urgent</li>
+                <li id="c08-opt-critical" role="option" aria-selected="false" data-value="critical">Critical</li>
+                <li id="c08-opt-blocker" role="option" aria-selected="false" data-value="blocker">Blocker</li>
+              </ul>
+              <input type="hidden" name="c08-priority" value="" />
+            </div>
+          </div>
+
+          <!-- NEGATIVE 09 · Selecting closes the list. Enter/Space or a click selects the active item but the
+               list stays open, and Tab leaves it open behind the next field; only Escape closes it.
+               Expected: dropdown-selection-not-closing -->
+          <div class="field">
+            <p class="group-title" id="c09-label">Case 9: Selecting an item or pressing Tab does not close this list</p>
+            <div class="custom-dropdown" id="c09-dropdown">
+              <div class="custom-dropdown-toggle" id="c09-toggle" role="combobox" tabindex="0" aria-haspopup="listbox" aria-expanded="false" aria-controls="c09-listbox" aria-labelledby="c09-label c09-toggle">
+                <span class="custom-dropdown-value">Select priority</span>
+              </div>
+              <ul class="custom-dropdown-list" id="c09-listbox" role="listbox" aria-labelledby="c09-label" tabindex="-1">
+                <li id="c09-opt-low" role="option" aria-selected="false" data-value="low">Low</li>
+                <li id="c09-opt-medium" role="option" aria-selected="false" data-value="medium">Medium</li>
+                <li id="c09-opt-high" role="option" aria-selected="false" data-value="high">High</li>
+                <li id="c09-opt-urgent" role="option" aria-selected="false" data-value="urgent">Urgent</li>
+                <li id="c09-opt-critical" role="option" aria-selected="false" data-value="critical">Critical</li>
+                <li id="c09-opt-blocker" role="option" aria-selected="false" data-value="blocker">Blocker</li>
+              </ul>
+              <input type="hidden" name="c09-priority" value="" />
+            </div>
+          </div>
+          
+
+          <div class="field">
+            <p class="group-title">Tell us what is urgent</p>
+            <div class="checkbox-group">
+              <label><input type="checkbox" name="urgent" value="urgent" />Urgent issue</label>
+              <label><input type="checkbox" name="security" value="security" />Security review</label>
+              <label><input type="checkbox" name="training" value="training" />Training request</label>
+            </div>
+          </div>
+
+          <div class="field">
+            <p class="group-title">Best way to reach you</p>
+            <div class="radio-group" role="radiogroup" aria-label="Best way to reach you">
+              <div class="custom-radio" role="radio" aria-checked="false" aria-label="Email" tabindex="0"><span class="radio-mark"></span>Email</div>
+              <div class="custom-radio" role="radio" aria-checked="false" aria-label="Phone" tabindex="0"><span class="radio-mark"></span>Phone</div>
+              <div class="custom-radio" role="radio" aria-checked="false" aria-label="Chat" tabindex="0"><span class="radio-mark"></span>Chat</div>
+            </div>
+          </div>
+
+          <div class="field custom-radio-block">
+            <p class="group-title">How would you like to receive updates?</p>
+            <div class="radio-group" role="radiogroup" aria-label="Update frequency">
+              <div class="custom-radio" role="radio" aria-checked="false" aria-label="Daily" tabindex="0"><span class="radio-mark"></span>Daily</div>
+              <div class="custom-radio" role="radio" aria-checked="false" aria-label="Weekly" tabindex="0"><span class="radio-mark"></span>Weekly</div>
+              <div class="custom-radio" role="radio" aria-checked="false" aria-label="Monthly" tabindex="0"><span class="radio-mark"></span>Monthly</div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="customer-name">Customer name</label>
+            <input id="customer-name" type="text" value="" placeholder="Name" />
+          </div>
+
+          <div class="field">
+            <label for="customer-email">Email address</label>
+            <input id="customer-email" type="email" value="" placeholder="you@example.com" />
+          </div>
+
+          <div class="field">
+            <label for="attachments">Attachment</label>
+            <input type="file" id="attachments" />
+          </div>
+
+          <div class="field">
+            <label for="message">Message</label>
+            <textarea id="message" placeholder="Type your request here...">The form is intentionally missing some accessibility features so the remediation tool can identify them.</textarea>
+          </div>
+
+          <div class="field">
+            <label for="company-url">Website</label>
+            <input id="company-url" type="text" value="" placeholder="https://" />
+          </div>
+
+          <div class="actions-row">
+            <button class="primary-btn" type="submit">Submit request</button>
+            <button class="secondary-btn" type="button"></button>
+            <button class="secondary-btn icon-btn" type="button" aria-label="Close dialog">X</button>
+          </div>
+
+          <div class="help-row">
+            <a class="assist-link" href="#dialog-help" id="help-link">Need help?</a>
+            <a class="assist-link muted-link" href="#">Contact support</a>
+          </div>
+
+          <p class="note">Demo: this page is intentionally under-accessible.</p>
+        </form>
+      </main>
+    </div>
+
+    <div id="dialog-help" role="dialog" aria-modal="false" aria-labelledby="dialog-title" class="support-dialog">
+      <div class="dialog-panel">
+        <h2 id="dialog-title">Need help?</h2>
+        <p>Our support team usually replies within 1 business day.</p>
+        <button type="button" class="close-btn">Close</button>
+      </div>
+    </div>
+
+    <script>
+      const helpLink = document.getElementById('help-link');
+      const dialog = document.getElementById('dialog-help');
+      const closeBtn = document.querySelector('.close-btn');
+
+      helpLink.addEventListener('click', function (event) {
+        event.preventDefault();
+        dialog.style.display = 'block';
+      });
+
+      closeBtn.addEventListener('click', function () {
+        dialog.style.display = 'none';
+      });
+
+      // Same dropdown behaviour as the original demo; each `breaks` flag switches off one keyboard behaviour.
+      function setupDropdown(prefix, breaks) {
+        breaks = breaks || {};
+        const dropdown = document.getElementById(prefix + '-dropdown');
+        const dropdownToggle = dropdown.querySelector('.custom-dropdown-toggle');
+        const dropdownValue = dropdown.querySelector('.custom-dropdown-value');
+        const dropdownInput = dropdown.querySelector('input[type="hidden"]');
+        const options = Array.from(dropdown.querySelectorAll('[role="option"]'));
+        const openKeys = ['ArrowDown', 'ArrowUp', 'Enter', ' ', 'Home', 'End'].filter(function (key) {
+          return !(breaks.openKeysMissing || []).includes(key);
+        });
+        let activeIndex = -1;
+        let selectedIndex = -1;
+        let typeahead = '';
+        let typeaheadTimer;
+
+        function isOpen() {
+          return dropdown.classList.contains('open');
+        }
+
+        function setActive(index) {
+          options.forEach(function (option) {
+            option.classList.remove('active');
+          });
+          activeIndex = index;
+          if (index < 0) {
+            dropdownToggle.removeAttribute('aria-activedescendant');
+            return;
+          }
+          const option = options[index];
+          option.classList.add('active');
+          dropdownToggle.setAttribute('aria-activedescendant', option.id);
+          option.scrollIntoView({ block: 'nearest' });
+        }
+
+        function setDropdownOpen(open) {
+          dropdown.classList.toggle('open', open);
+          dropdownToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+          setActive(open ? selectedIndex : -1);
+        }
+
+        function selectOption(index) {
+          if (index < 0) return;
+          options.forEach(function (option, i) {
+            const selected = i === index;
+            option.classList.toggle('selected', selected);
+            option.setAttribute('aria-selected', selected ? 'true' : 'false');
+          });
+          selectedIndex = index;
+          dropdownValue.textContent = options[index].textContent;
+          dropdownInput.value = options[index].dataset.value;
+        }
+
+        function findByTypeahead(char) {
+          clearTimeout(typeaheadTimer);
+          typeahead += char.toLowerCase();
+          typeaheadTimer = setTimeout(function () {
+            typeahead = '';
+          }, 500);
+          const start = activeIndex >= 0 ? activeIndex : selectedIndex;
+          for (let offset = 1; offset <= options.length; offset++) {
+            const i = (start + (typeahead.length > 1 ? offset - 1 : offset) + options.length) % options.length;
+            if (options[i].textContent.toLowerCase().startsWith(typeahead)) {
+              return i;
+            }
+          }
+          return -1;
+        }
+
+        dropdownToggle.addEventListener('click', function () {
+          setDropdownOpen(!isOpen());
+        });
+
+        dropdownToggle.addEventListener('keydown', function (event) {
+          const last = options.length - 1;
+
+          if (!isOpen()) {
+            if (openKeys.includes(event.key)) {
+              event.preventDefault();
+              setDropdownOpen(true);
+              if (event.key === 'Home') setActive(0);
+              if (event.key === 'End') setActive(last);
+            } else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+              const match = findByTypeahead(event.key);
+              if (match >= 0) selectOption(match);
+            }
+            return;
+          }
+
+          switch (event.key) {
+            case 'ArrowDown':
+              if (breaks.noArrowKeys) break;
+              event.preventDefault();
+              setActive(Math.min(activeIndex + 1, last));
+              break;
+            case 'ArrowUp':
+              if (breaks.noArrowKeys) break;
+              event.preventDefault();
+              if (event.altKey) {
+                selectOption(activeIndex);
+                setDropdownOpen(false);
+              } else {
+                setActive(activeIndex < 0 ? last : Math.max(activeIndex - 1, 0));
+              }
+              break;
+            case 'Home':
+              if (breaks.noHomeEnd) break;
+              event.preventDefault();
+              setActive(0);
+              break;
+            case 'End':
+              if (breaks.noHomeEnd) break;
+              event.preventDefault();
+              setActive(last);
+              break;
+            case 'Enter':
+            case ' ':
+              event.preventDefault();
+              selectOption(activeIndex);
+              if (!breaks.noCloseOnSelect) setDropdownOpen(false);
+              break;
+            case 'Escape':
+              if (breaks.noEscape) break;
+              event.preventDefault();
+              setDropdownOpen(false);
+              if (breaks.blurOnEscape) dropdownToggle.blur();
+              break;
+            case 'Tab':
+              if (breaks.noCloseOnSelect || breaks.keepOpenOnTab) break;
+              setDropdownOpen(false);
+              break;
+            default:
+              if (breaks.noTypeahead) break;
+              if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+                const match = findByTypeahead(event.key);
+                if (match >= 0) setActive(match);
+              }
+          }
+        });
+
+        options.forEach(function (option, index) {
+          option.addEventListener('mousedown', function (event) {
+            event.preventDefault();
+          });
+          option.addEventListener('click', function () {
+            selectOption(index);
+            if (!breaks.noCloseOnSelect) setDropdownOpen(false);
+            dropdownToggle.focus();
+          });
+          option.addEventListener('mousemove', function () {
+            if (activeIndex !== index) setActive(index);
+          });
+        });
+
+        if (breaks.keepOpenOnTab) {
+          dropdown.addEventListener('focusout', function (event) {
+            if (!dropdown.contains(event.relatedTarget)) {
+              setDropdownOpen(false);
+            }
+          });
+        }
+
+        document.addEventListener('click', function (event) {
+          if (!dropdown.contains(event.target)) {
+            setDropdownOpen(false);
+          }
+        });
+      }
+
+      setupDropdown('c01');                                 // markup break: trigger has no tabindex
+      setupDropdown('c02', { openKeysMissing: ['Enter'] });
+      setupDropdown('c03', { openKeysMissing: [' '] });
+      setupDropdown('c04', { noArrowKeys: true });
+      setupDropdown('c05', { noEscape: true });
+      setupDropdown('c06', { blurOnEscape: true });
+      setupDropdown('c07', { keepOpenOnTab: true });        // markup break: options have tabindex="0"; list stays open on Tab so they become real Tab stops
+      setupDropdown('c08', { noHomeEnd: true });
+      setupDropdown('c09', { noCloseOnSelect: true });
+
+
+      document.querySelectorAll('.radio-group').forEach(function (group) {
+        group.querySelectorAll('.custom-radio').forEach(function (radio) {
+          radio.addEventListener('click', function () {
+            group.querySelectorAll('.custom-radio').forEach(function (option) {
+              option.setAttribute('aria-checked', option === radio ? 'true' : 'false');
+            });
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

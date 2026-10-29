@@ -1,0 +1,10 @@
+{
+  "name": "textstack-a11y-demo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local demo UI for the AI accessibility remediation tool.",
+  "scripts": {
+    "start": "node server.js",
+    "scan": "node ../accessibility-remediation-tool/agent.js --local . --output ./a11y-report"
+  }
+}
