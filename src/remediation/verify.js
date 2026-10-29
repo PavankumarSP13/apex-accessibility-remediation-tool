@@ -298,7 +298,7 @@ export function buildIssueVerificationLedger(analysis, afterData, fixes, unverif
       || (issue.source === 'pa11y' && pa11yIssueScanFailed)
       || (issue.source === 'lighthouse' && lighthouseScanFailed)
       || (issue.source === 'keyboard' && keyboardScanFailed)
-      || (issue.source === 'dropdown-keyboard' && dropdownKeyboardScanFailed);
+      || ((issue.source === 'dropdown-keyboard' || issue.source === 'radio-keyboard') && dropdownKeyboardScanFailed);
     let status = sourceScanFailed ? 'scan-failed' : 'resolved';
     if (!sourceScanFailed) {
       if (exactRemaining > 0) {
