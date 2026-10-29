@@ -328,7 +328,8 @@ async function scanDialogForIssues(page, dialogSelector, scanUrl) {
       }
     }
     return issues;
-  } catch {
+  }  catch (error) {
+    console.warn(`[Dialog A11y] Axe scan failed for ${dialogSelector}: ${error.message}`);
     return [];
   }
 }

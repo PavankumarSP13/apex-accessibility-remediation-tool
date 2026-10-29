@@ -266,7 +266,29 @@ export async function main() {
       const { phase3g_focusableAction } = await import('./src/scanning/focusable-action-scan.js');
       const phase3gOutputDir = logger.dir || path.resolve(opts.output);
       focusableActionResult = await phase3g_focusableAction(phase3ScanUrl, phase3gOutputDir);
-      console.log(chalk.dim(`  Focusable-action scan: ${focusableActionResult.scannedCount || 0} element(s) checked, ${focusableActionResult.issues.length} issue(s), ${focusableActionResult.screenshots?.length || 0} screenshot(s)`));
+      
+      if (focusableActionResult.scanFailed) {
+        console.warn(`[Phase 3g] Scan failed: ${focusableActionResult.failReason || 'unknown error'}`);
+      } else {
+        console.log(chalk.dim(`  Focusable-action scan: ${focusableActionResult.scannedCount || 0} element(s) checked, ${focusableActionResult.issues.length} issue(s), ${focusableActionResult.screenshots?.length || 0} screenshot(s)`));
+        console.log(`[Phase 3g] ${focusableActionResult.issues.length} issues found`);
+      }
+      const dialogIssues = focusableActionResult.issues.filter(issue =>
+        issue.context === 'dialog' || String(issue.ruleId ?? '').startsWith('dialog-')
+      );
+      if (focusableActionResult.scanFailed) {
+        console.warn('[Dialog A11y] Findings unavailable because the Phase 3g scan failed.');
+      } else {
+        console.log(`[Dialog A11y] ${dialogIssues.length} dialog accessibility issue(s) found`);
+        for (const issue of dialogIssues) {
+          console.log(
+            `[Dialog A11y] ${issue.impact ?? 'unknown'} | ${issue.ruleId ?? 'unknown-rule'} | ` +
+            `dialog=${issue.dialogSelector ?? 'unknown'} | trigger=${issue.triggerSelector ?? 'unknown'} | ` +
+            `${issue.description ?? 'No description provided'}`
+          );
+        }
+      }
+
     } catch (err) {
       console.log(chalk.dim(`  Focusable-action scan skipped: ${err.message}`));
     }
