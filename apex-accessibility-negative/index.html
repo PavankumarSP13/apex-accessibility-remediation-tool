@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TextStack AI Support Portal (negative dropdown cases)</title>
+    <title>TextStack AI Support Portal (negative dropdown and dialog cases)</title>
     <link rel="stylesheet" href="styles.css" />
     <style>
       .composer-tab:focus {
@@ -15,6 +15,14 @@
 
       .composer-tab:focus {
         outline-color: #fff;
+      }
+
+      .custom-dropdown-list {
+        display: none;
+      }
+
+      .custom-dropdown.open > .custom-dropdown-list {
+        display: block;
       }
     </style>
   </head>
@@ -28,7 +36,32 @@
 
       <main class="support-card">
         <h1>TextStack AI support portal</h1>
-        <p class="subtitle">Negative test page: every dropdown below is broken in exactly one keyboard behaviour, so the dropdown keyboard scan should report each of them.</p>
+        <p class="subtitle">Negative test page: the dropdown and dialog scenarios below intentionally contain keyboard-accessibility defects for scanner validation.</p>
+
+        <div class="help-row">
+          <a class="assist-link" href="#dialog-help" id="help-link">Need help?</a>
+          <button type="button" id="open-semantics-dialog">Open dialog without semantics</button>
+          <button type="button" id="open-name-dialog">Open unnamed dialog</button>
+          <button type="button" id="open-order-dialog">Open dialog with wrong focus order</button>
+          <button type="button" id="open-arrow-dialog">Open dialog with broken arrow navigation</button>
+          <button type="button" id="open-escape-dialog">Open broken Escape dialog</button>
+          <a class="assist-link muted-link" href="#">Contact support</a>
+        </div>
+
+        <section class="field" aria-labelledby="dialog-expected-title">
+          <h2 id="dialog-expected-title">Expected dialog findings</h2>
+          <ul>
+            <li><code>dialog-modal-aria-missing</code>: the first custom modal is not marked modal.</li>
+            <li><code>dialog-focus-not-moved</code>: focus remains on the opener when the first dialog opens.</li>
+            <li><code>dialog-focus-escapes</code>: Tab and Shift+Tab reach the page behind the first modal.</li>
+            <li><code>dialog-focus-not-restored</code>: Escape closes the first dialog without restoring focus.</li>
+            <li><code>dialog-missing-semantics</code>: a visible custom modal has no dialog role or modal semantics.</li>
+            <li><code>aria-dialog-name</code>: a dialog has no accessible name.</li>
+            <li><code>dialog-focus-order-wrong</code>: positive tabindex values cause focus order to differ from DOM order.</li>
+            <li><code>dialog-arrow-focus-escapes</code>: ArrowRight moves focus outside the active dialog.</li>
+            <li><code>dialog-escape-does-not-close</code>: Escape does not close the last dialog.</li>
+          </ul>
+        </section>
 
 <!-- this changes related tab functionality-->
 
@@ -79,11 +112,10 @@
             </div>
           </div>
 
-          <!-- NEGATIVE 02 · Shift+Tab comes back. Shift+Tab from the "Reference number" field below
-               jumps to "Customer name" instead of returning to this trigger.
-               Expected: dropdown-trigger-shift-tab-unreachable -->
+          <!-- NEGATIVE 02 · Enter opens. Enter is not handled on the trigger.
+               Expected: dropdown-enter-not-activating -->
           <div class="field">
-            <p class="group-title" id="c02-label">Case 2: Shift+Tab does not come back to this dropdown</p>
+            <p class="group-title" id="c02-label">Case 2: Enter does not open this dropdown</p>
             <div class="custom-dropdown" id="c02-dropdown">
               <div class="custom-dropdown-toggle" id="c02-toggle" role="combobox" tabindex="0" aria-haspopup="listbox" aria-expanded="false" aria-controls="c02-listbox" aria-labelledby="c02-label c02-toggle">
                 <span class="custom-dropdown-value">Select priority</span>
@@ -100,15 +132,10 @@
             </div>
           </div>
 
-          <!-- <div class="field">
-            <label for="c02-next">Reference number</label>
-            <input id="c02-next" type="text" value="" placeholder="REF-0000" />
-          </div> -->
-
-          <!-- NEGATIVE 03 · Enter opens. Enter is not handled on the trigger.
-               Expected: dropdown-enter-not-activating -->
+          <!-- NEGATIVE 03 · Space opens. Space is not handled on the trigger, so the page scrolls instead.
+               Expected: dropdown-space-not-activating -->
           <div class="field">
-            <p class="group-title" id="c03-label">Case 3: Enter does not open this dropdown</p>
+            <p class="group-title" id="c03-label">Case 3: Space does not open this dropdown</p>
             <div class="custom-dropdown" id="c03-dropdown">
               <div class="custom-dropdown-toggle" id="c03-toggle" role="combobox" tabindex="0" aria-haspopup="listbox" aria-expanded="false" aria-controls="c03-listbox" aria-labelledby="c03-label c03-toggle">
                 <span class="custom-dropdown-value">Select priority</span>
@@ -125,10 +152,11 @@
             </div>
           </div>
 
-          <!-- NEGATIVE 04 · Space opens. Space is not handled on the trigger, so the page scrolls instead.
-               Expected: dropdown-space-not-activating -->
+
+          <!-- NEGATIVE 04 · Arrow keys move between items. ArrowUp/ArrowDown do nothing once the list is open.
+               Expected: dropdown-arrow-keys-not-supported -->
           <div class="field">
-            <p class="group-title" id="c04-label">Case 4: Space does not open this dropdown</p>
+            <p class="group-title" id="c04-label">Case 4: Arrow keys do not move through this list</p>
             <div class="custom-dropdown" id="c04-dropdown">
               <div class="custom-dropdown-toggle" id="c04-toggle" role="combobox" tabindex="0" aria-haspopup="listbox" aria-expanded="false" aria-controls="c04-listbox" aria-labelledby="c04-label c04-toggle">
                 <span class="custom-dropdown-value">Select priority</span>
@@ -145,11 +173,30 @@
             </div>
           </div>
 
-
-          <!-- NEGATIVE 06 · Arrow keys move between items. ArrowUp/ArrowDown do nothing once the list is open.
-               Expected: dropdown-arrow-keys-not-supported -->
+          <!-- NEGATIVE 05 · Escape closes. Escape is ignored, so the list stays open.
+               Expected: dropdown-escape-not-closing -->
           <div class="field">
-            <p class="group-title" id="c06-label">Case 6: Arrow keys do not move through this list</p>
+            <p class="group-title" id="c05-label">Case 5: Escape does not close this list</p>
+            <div class="custom-dropdown" id="c05-dropdown">
+              <div class="custom-dropdown-toggle" id="c05-toggle" role="combobox" tabindex="0" aria-haspopup="listbox" aria-expanded="false" aria-controls="c05-listbox" aria-labelledby="c05-label c05-toggle">
+                <span class="custom-dropdown-value">Select priority</span>
+              </div>
+              <ul class="custom-dropdown-list" id="c05-listbox" role="listbox" aria-labelledby="c05-label" tabindex="-1">
+                <li id="c05-opt-low" role="option" aria-selected="false" data-value="low">Low</li>
+                <li id="c05-opt-medium" role="option" aria-selected="false" data-value="medium">Medium</li>
+                <li id="c05-opt-high" role="option" aria-selected="false" data-value="high">High</li>
+                <li id="c05-opt-urgent" role="option" aria-selected="false" data-value="urgent">Urgent</li>
+                <li id="c05-opt-critical" role="option" aria-selected="false" data-value="critical">Critical</li>
+                <li id="c05-opt-blocker" role="option" aria-selected="false" data-value="blocker">Blocker</li>
+              </ul>
+              <input type="hidden" name="c05-priority" value="" />
+            </div>
+          </div>
+
+          <!-- NEGATIVE 06 · Focus returns to the trigger. Escape closes the list but drops focus.
+               Expected: dropdown-focus-not-returned -->
+          <div class="field">
+            <p class="group-title" id="c06-label">Case 6: Focus is lost after Escape closes this list</p>
             <div class="custom-dropdown" id="c06-dropdown">
               <div class="custom-dropdown-toggle" id="c06-toggle" role="combobox" tabindex="0" aria-haspopup="listbox" aria-expanded="false" aria-controls="c06-listbox" aria-labelledby="c06-label c06-toggle">
                 <span class="custom-dropdown-value">Select priority</span>
@@ -166,30 +213,30 @@
             </div>
           </div>
 
-          <!-- NEGATIVE 07 · Escape closes. Escape is ignored, so the list stays open.
-               Expected: dropdown-escape-not-closing -->
+          <!-- NEGATIVE 07 · Items aren't Tab stops. Every option has tabindex="0".
+               Expected: dropdown-items-in-tab-order -->
           <div class="field">
-            <p class="group-title" id="c07-label">Case 7: Escape does not close this list</p>
+            <p class="group-title" id="c07-label">Case 7: Every item in this list is a Tab stop</p>
             <div class="custom-dropdown" id="c07-dropdown">
               <div class="custom-dropdown-toggle" id="c07-toggle" role="combobox" tabindex="0" aria-haspopup="listbox" aria-expanded="false" aria-controls="c07-listbox" aria-labelledby="c07-label c07-toggle">
                 <span class="custom-dropdown-value">Select priority</span>
               </div>
               <ul class="custom-dropdown-list" id="c07-listbox" role="listbox" aria-labelledby="c07-label" tabindex="-1">
-                <li id="c07-opt-low" role="option" aria-selected="false" data-value="low">Low</li>
-                <li id="c07-opt-medium" role="option" aria-selected="false" data-value="medium">Medium</li>
-                <li id="c07-opt-high" role="option" aria-selected="false" data-value="high">High</li>
-                <li id="c07-opt-urgent" role="option" aria-selected="false" data-value="urgent">Urgent</li>
-                <li id="c07-opt-critical" role="option" aria-selected="false" data-value="critical">Critical</li>
-                <li id="c07-opt-blocker" role="option" aria-selected="false" data-value="blocker">Blocker</li>
+                <li id="c07-opt-low" role="option" tabindex="0" aria-selected="false" data-value="low">Low</li>
+                <li id="c07-opt-medium" role="option" tabindex="0" aria-selected="false" data-value="medium">Medium</li>
+                <li id="c07-opt-high" role="option" tabindex="0" aria-selected="false" data-value="high">High</li>
+                <li id="c07-opt-urgent" role="option" tabindex="0" aria-selected="false" data-value="urgent">Urgent</li>
+                <li id="c07-opt-critical" role="option" tabindex="0" aria-selected="false" data-value="critical">Critical</li>
+                <li id="c07-opt-blocker" role="option" tabindex="0" aria-selected="false" data-value="blocker">Blocker</li>
               </ul>
               <input type="hidden" name="c07-priority" value="" />
             </div>
           </div>
 
-          <!-- NEGATIVE 08 · Focus returns to the trigger. Escape closes the list but drops focus.
-               Expected: dropdown-focus-not-returned -->
+          <!-- NEGATIVE 08 (good-to-have) · Home / End do nothing in the open list.
+               Expected: dropdown-home-end-missing -->
           <div class="field">
-            <p class="group-title" id="c08-label">Case 8: Focus is lost after Escape closes this list</p>
+            <p class="group-title" id="c08-label">Case 8: Home and End do nothing in this list</p>
             <div class="custom-dropdown" id="c08-dropdown">
               <div class="custom-dropdown-toggle" id="c08-toggle" role="combobox" tabindex="0" aria-haspopup="listbox" aria-expanded="false" aria-controls="c08-listbox" aria-labelledby="c08-label c08-toggle">
                 <span class="custom-dropdown-value">Select priority</span>
@@ -206,64 +253,24 @@
             </div>
           </div>
 
-          <!-- NEGATIVE 09 · Items aren't Tab stops. Every option has tabindex="0".
-               Expected: dropdown-items-in-tab-order -->
+          <!-- NEGATIVE 09 · Selecting closes the list. Enter/Space or a click selects the active item but the
+               list stays open, and Tab leaves it open behind the next field; only Escape closes it.
+               Expected: dropdown-selection-not-closing -->
           <div class="field">
-            <p class="group-title" id="c09-label">Case 9: Every item in this list is a Tab stop</p>
+            <p class="group-title" id="c09-label">Case 9: Selecting an item or pressing Tab does not close this list</p>
             <div class="custom-dropdown" id="c09-dropdown">
               <div class="custom-dropdown-toggle" id="c09-toggle" role="combobox" tabindex="0" aria-haspopup="listbox" aria-expanded="false" aria-controls="c09-listbox" aria-labelledby="c09-label c09-toggle">
                 <span class="custom-dropdown-value">Select priority</span>
               </div>
               <ul class="custom-dropdown-list" id="c09-listbox" role="listbox" aria-labelledby="c09-label" tabindex="-1">
-                <li id="c09-opt-low" role="option" tabindex="0" aria-selected="false" data-value="low">Low</li>
-                <li id="c09-opt-medium" role="option" tabindex="0" aria-selected="false" data-value="medium">Medium</li>
-                <li id="c09-opt-high" role="option" tabindex="0" aria-selected="false" data-value="high">High</li>
-                <li id="c09-opt-urgent" role="option" tabindex="0" aria-selected="false" data-value="urgent">Urgent</li>
-                <li id="c09-opt-critical" role="option" tabindex="0" aria-selected="false" data-value="critical">Critical</li>
-                <li id="c09-opt-blocker" role="option" tabindex="0" aria-selected="false" data-value="blocker">Blocker</li>
+                <li id="c09-opt-low" role="option" aria-selected="false" data-value="low">Low</li>
+                <li id="c09-opt-medium" role="option" aria-selected="false" data-value="medium">Medium</li>
+                <li id="c09-opt-high" role="option" aria-selected="false" data-value="high">High</li>
+                <li id="c09-opt-urgent" role="option" aria-selected="false" data-value="urgent">Urgent</li>
+                <li id="c09-opt-critical" role="option" aria-selected="false" data-value="critical">Critical</li>
+                <li id="c09-opt-blocker" role="option" aria-selected="false" data-value="blocker">Blocker</li>
               </ul>
               <input type="hidden" name="c09-priority" value="" />
-            </div>
-          </div>
-
-          <!-- NEGATIVE 10 (good-to-have) · Home / End do nothing in the open list.
-               Expected: dropdown-home-end-missing -->
-          <div class="field">
-            <p class="group-title" id="c10-label">Case 10: Home and End do nothing in this list</p>
-            <div class="custom-dropdown" id="c10-dropdown">
-              <div class="custom-dropdown-toggle" id="c10-toggle" role="combobox" tabindex="0" aria-haspopup="listbox" aria-expanded="false" aria-controls="c10-listbox" aria-labelledby="c10-label c10-toggle">
-                <span class="custom-dropdown-value">Select priority</span>
-              </div>
-              <ul class="custom-dropdown-list" id="c10-listbox" role="listbox" aria-labelledby="c10-label" tabindex="-1">
-                <li id="c10-opt-low" role="option" aria-selected="false" data-value="low">Low</li>
-                <li id="c10-opt-medium" role="option" aria-selected="false" data-value="medium">Medium</li>
-                <li id="c10-opt-high" role="option" aria-selected="false" data-value="high">High</li>
-                <li id="c10-opt-urgent" role="option" aria-selected="false" data-value="urgent">Urgent</li>
-                <li id="c10-opt-critical" role="option" aria-selected="false" data-value="critical">Critical</li>
-                <li id="c10-opt-blocker" role="option" aria-selected="false" data-value="blocker">Blocker</li>
-              </ul>
-              <input type="hidden" name="c10-priority" value="" />
-            </div>
-          </div>
-
-          <!-- NEGATIVE 12 · Selecting closes the list. Enter/Space or a click selects the active item but the
-               list stays open, and Tab leaves it open behind the next field; only Escape closes it.
-               Expected: dropdown-selection-not-closing -->
-          <div class="field">
-            <p class="group-title" id="c12-label">Case 12: Selecting an item or pressing Tab does not close this list</p>
-            <div class="custom-dropdown" id="c12-dropdown">
-              <div class="custom-dropdown-toggle" id="c12-toggle" role="combobox" tabindex="0" aria-haspopup="listbox" aria-expanded="false" aria-controls="c12-listbox" aria-labelledby="c12-label c12-toggle">
-                <span class="custom-dropdown-value">Select priority</span>
-              </div>
-              <ul class="custom-dropdown-list" id="c12-listbox" role="listbox" aria-labelledby="c12-label" tabindex="-1">
-                <li id="c12-opt-low" role="option" aria-selected="false" data-value="low">Low</li>
-                <li id="c12-opt-medium" role="option" aria-selected="false" data-value="medium">Medium</li>
-                <li id="c12-opt-high" role="option" aria-selected="false" data-value="high">High</li>
-                <li id="c12-opt-urgent" role="option" aria-selected="false" data-value="urgent">Urgent</li>
-                <li id="c12-opt-critical" role="option" aria-selected="false" data-value="critical">Critical</li>
-                <li id="c12-opt-blocker" role="option" aria-selected="false" data-value="blocker">Blocker</li>
-              </ul>
-              <input type="hidden" name="c12-priority" value="" />
             </div>
           </div>
 
@@ -326,21 +333,57 @@
             <button class="secondary-btn icon-btn" type="button" aria-label="Close dialog">X</button>
           </div>
 
-          <div class="help-row">
-            <a class="assist-link" href="#dialog-help" id="help-link">Need help?</a>
-            <a class="assist-link muted-link" href="#">Contact support</a>
-          </div>
-
           <p class="note">Demo: this page is intentionally under-accessible.</p>
         </form>
       </main>
     </div>
 
-    <div id="dialog-help" role="dialog" aria-modal="false" aria-labelledby="dialog-title" class="support-dialog">
+    <div id="dialog-help" role="dialog" aria-modal="false" aria-labelledby="dialog-title" class="support-dialog modal" style="display:none">
       <div class="dialog-panel">
         <h2 id="dialog-title">Need help?</h2>
         <p>Our support team usually replies within 1 business day.</p>
         <button type="button" class="close-btn">Close</button>
+      </div>
+    </div>
+
+    <div id="dialog-no-semantics" class="support-dialog modal" style="display:none">
+      <div class="dialog-panel">
+        <h2>Dialog without semantics</h2>
+        <p>This visible modal intentionally has no dialog role or modal state.</p>
+        <button type="button" class="close-semantics-btn">Close dialog</button>
+      </div>
+    </div>
+
+    <div id="dialog-no-name" role="dialog" aria-modal="true" class="support-dialog" style="display:none">
+      <div class="dialog-panel">
+        <h2>Dialog content without an accessible name</h2>
+        <p>The heading is not programmatically associated with this dialog.</p>
+        <button type="button" class="close-name-btn">Close dialog</button>
+      </div>
+    </div>
+
+    <div id="dialog-wrong-order" role="dialog" aria-modal="true" aria-labelledby="dialog-order-title" class="support-dialog" style="display:none">
+      <div class="dialog-panel">
+        <h2 id="dialog-order-title">Dialog with incorrect focus order</h2>
+        <button type="button" id="order-dom-first" tabindex="2">DOM-first control</button>
+        <button type="button" id="order-tab-first" tabindex="1">Tab-first control</button>
+      </div>
+    </div>
+
+    <div id="dialog-arrow-escape" role="dialog" aria-modal="true" aria-labelledby="dialog-arrow-title" class="support-dialog" style="display:none">
+      <div class="dialog-panel">
+        <h2 id="dialog-arrow-title">Dialog with broken arrow navigation</h2>
+        <button type="button" role="tab" id="dialog-arrow-tab" tabindex="0">Tab in dialog</button>
+        <button type="button" class="close-arrow-btn">Close dialog</button>
+      </div>
+    </div>
+
+    <div id="dialog-escape" role="dialog" aria-modal="true" aria-labelledby="dialog-escape-title" class="support-dialog" style="display:none">
+      <div class="dialog-panel">
+        <h2 id="dialog-escape-title">Escape does not close this dialog</h2>
+        <p>This modal intentionally traps Tab but ignores Escape.</p>
+        <button type="button" class="close-escape-btn">Close dialog</button>
+        <button type="button">Continue</button>
       </div>
     </div>
 
@@ -394,14 +437,125 @@
       const helpLink = document.getElementById('help-link');
       const dialog = document.getElementById('dialog-help');
       const closeBtn = document.querySelector('.close-btn');
+      const semanticsTrigger = document.getElementById('open-semantics-dialog');
+      const semanticsDialog = document.getElementById('dialog-no-semantics');
+      const nameTrigger = document.getElementById('open-name-dialog');
+      const nameDialog = document.getElementById('dialog-no-name');
+      const orderTrigger = document.getElementById('open-order-dialog');
+      const orderDialog = document.getElementById('dialog-wrong-order');
+      const arrowTrigger = document.getElementById('open-arrow-dialog');
+      const arrowDialog = document.getElementById('dialog-arrow-escape');
+      const escapeTrigger = document.getElementById('open-escape-dialog');
+      const escapeDialog = document.getElementById('dialog-escape');
+      const closeEscapeBtn = document.querySelector('.close-escape-btn');
+
+      function closeDialogOnEscape(dialogElement, trigger, closeButton) {
+        function close() {
+          dialogElement.style.display = 'none';
+          dialogElement.classList.remove('show');
+          trigger.focus();
+        }
+
+        dialogElement.addEventListener('keydown', function (event) {
+          if (event.key === 'Escape') close();
+        });
+        closeButton.addEventListener('click', close);
+      }
 
       helpLink.addEventListener('click', function (event) {
         event.preventDefault();
         dialog.style.display = 'block';
+        dialog.classList.add('show');
       });
 
       closeBtn.addEventListener('click', function () {
         dialog.style.display = 'none';
+        dialog.classList.remove('show');
+      });
+
+      dialog.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+          dialog.style.display = 'none';
+          dialog.classList.remove('show');
+        }
+      });
+
+      semanticsTrigger.addEventListener('click', function () {
+        semanticsDialog.style.display = 'block';
+        semanticsDialog.classList.add('show');
+        semanticsDialog.querySelector('button').focus();
+      });
+      closeDialogOnEscape(semanticsDialog, semanticsTrigger, document.querySelector('.close-semantics-btn'));
+
+      nameTrigger.addEventListener('click', function () {
+        nameDialog.style.display = 'block';
+        nameDialog.querySelector('button').focus();
+      });
+      closeDialogOnEscape(nameDialog, nameTrigger, document.querySelector('.close-name-btn'));
+
+      orderTrigger.addEventListener('click', function () {
+        orderDialog.style.display = 'block';
+        orderDialog.querySelector('#order-tab-first').focus();
+      });
+      orderDialog.addEventListener('keydown', function (event) {
+        if (event.key !== 'Tab') return;
+        const controls = [...orderDialog.querySelectorAll('button')];
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      });
+      closeDialogOnEscape(orderDialog, orderTrigger, orderDialog.querySelector('#order-dom-first'));
+
+      arrowTrigger.addEventListener('click', function () {
+        arrowDialog.style.display = 'block';
+        arrowDialog.querySelector('#dialog-arrow-tab').focus();
+      });
+      arrowDialog.addEventListener('keydown', function (event) {
+        if (event.key === 'Tab') {
+          const controls = [...arrowDialog.querySelectorAll('button')];
+          const first = controls[0];
+          const last = controls[controls.length - 1];
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        } else if (event.key === 'ArrowRight' && event.target.id === 'dialog-arrow-tab') {
+          document.getElementById('help-link').focus();
+        }
+      });
+      closeDialogOnEscape(arrowDialog, arrowTrigger, document.querySelector('.close-arrow-btn'));
+
+      escapeTrigger.addEventListener('click', function () {
+        escapeDialog.style.display = 'block';
+        escapeDialog.querySelector('button').focus();
+      });
+
+      escapeDialog.addEventListener('keydown', function (event) {
+        if (event.key !== 'Tab') return;
+        const controls = [...escapeDialog.querySelectorAll('button')];
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      });
+
+      closeEscapeBtn.addEventListener('click', function () {
+        escapeDialog.style.display = 'none';
+        escapeTrigger.focus();
       });
 
       // Same dropdown behaviour as the original demo; each `breaks` flag switches off one keyboard behaviour.
@@ -532,7 +686,7 @@
               if (breaks.blurOnEscape) dropdownToggle.blur();
               break;
             case 'Tab':
-              if (breaks.noCloseOnSelect) break;
+              if (breaks.noCloseOnSelect || breaks.keepOpenOnTab) break;
               setDropdownOpen(false);
               break;
             default:
@@ -558,6 +712,14 @@
           });
         });
 
+        if (breaks.keepOpenOnTab) {
+          dropdown.addEventListener('focusout', function (event) {
+            if (!dropdown.contains(event.relatedTarget)) {
+              setDropdownOpen(false);
+            }
+          });
+        }
+
         document.addEventListener('click', function (event) {
           if (!dropdown.contains(event.target)) {
             setDropdownOpen(false);
@@ -566,33 +728,16 @@
       }
 
       setupDropdown('c01');                                 // markup break: trigger has no tabindex
-      setupDropdown('c02');                                 // break is in the Shift+Tab handler below
-      setupDropdown('c03', { openKeysMissing: ['Enter'] });
-      setupDropdown('c04', { openKeysMissing: [' '] });
-      setupDropdown('c06', { noArrowKeys: true });
-      setupDropdown('c07', { noEscape: true });
-      setupDropdown('c08', { blurOnEscape: true });
-      setupDropdown('c09');                                 // markup break: options have tabindex="0"
-      setupDropdown('c10', { noHomeEnd: true });
-      setupDropdown('c12', { noCloseOnSelect: true });
-      setupDropdown('c11', { noTypeahead: true });
+      setupDropdown('c02', { openKeysMissing: ['Enter'] });
+      setupDropdown('c03', { openKeysMissing: [' '] });
+      setupDropdown('c04', { noArrowKeys: true });
+      setupDropdown('c05', { noEscape: true });
+      setupDropdown('c06', { blurOnEscape: true });
+      setupDropdown('c07', { keepOpenOnTab: true });        // markup break: options have tabindex="0"; list stays open on Tab so they become real Tab stops
+      setupDropdown('c08', { noHomeEnd: true });
+      setupDropdown('c09', { noCloseOnSelect: true });
 
-      // Case 2: Shift+Tab from the field after the dropdown skips past it.
-      document.getElementById('c02-next').addEventListener('keydown', function (event) {
-        if (event.key === 'Tab' && event.shiftKey) {
-          event.preventDefault();
-          document.getElementById('customer-name').focus();
-        }
-      });
 
-      // Case 5: the city list opens only when the user types; ArrowDown does nothing.
-      const cityDropdown = document.getElementById('c05-dropdown');
-      const cityInput = document.getElementById('c05-input');
-      cityInput.addEventListener('input', function () {
-        const open = cityInput.value.trim().length > 0;
-        cityDropdown.classList.toggle('open', open);
-        cityInput.setAttribute('aria-expanded', open ? 'true' : 'false');
-      });
       document.querySelectorAll('.radio-group').forEach(function (group) {
         group.querySelectorAll('.custom-radio').forEach(function (radio) {
           radio.addEventListener('click', function () {
