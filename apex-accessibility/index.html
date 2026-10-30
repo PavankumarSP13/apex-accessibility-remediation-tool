@@ -30,13 +30,13 @@
             <p><a href="https://en.wikipedia.org/wiki/Maria_Theresia_Ahlefeldt">Maria Theresia Ahlefeldt</a> (16 January 1755–20 December 1810) was a Danish composer of German origin. She is regarded as Denmark’s first female composer and wrote music for ballets, operas, and plays at the royal theatre.</p>
           </div>
           <div id="panel-andersen" class="composer-panel" role="tabpanel" aria-labelledby="tab-andersen" tabindex="-1" hidden>
-            <p>Carl Joachim Andersen (1847–1909) was a Danish flautist, conductor, and composer. He is remembered for his work with the Royal Danish Orchestra and for his contributions to flute music.</p>
+            <p><a href="https://en.wikipedia.org/wiki/Carl_Joachim_Andersen">Carl Joachim Andersen</a> (1847–1909) was a Danish flautist, conductor, and composer. He is remembered for his work with the Royal Danish Orchestra and for his contributions to flute music.</p>
           </div>
           <div id="panel-fonseca" class="composer-panel" role="tabpanel" aria-labelledby="tab-fonseca" tabindex="-1" hidden>
-            <p>Ida Henriette da Fonseca (1802–1858) was a Danish opera singer and composer. Her work helped establish her as a notable musical figure in nineteenth-century Denmark.</p>
+            <p><a href="https://en.wikipedia.org/wiki/Ida_Henriette_da_Fonseca">Ida Henriette da Fonseca</a> (1802–1858) was a Danish opera singer and composer. Her work helped establish her as a notable musical figure in nineteenth-century Denmark.</p>
           </div>
           <div id="panel-muller" class="composer-panel" role="tabpanel" aria-labelledby="tab-muller" tabindex="-1" hidden>
-            <p>Peter Erasmus Lange-Müller (1850–1926) was a Danish composer and pianist. His compositions include songs, chamber music, and works for the stage.</p>
+            <p><a href="https://en.wikipedia.org/wiki/Peter_Erasmus_Lange-M%C3%BCller">Peter Erasmus Lange-Müller</a> (1850–1926) was a Danish composer and pianist. His compositions include songs, chamber music, and works for the stage.</p>
           </div>
         </section>
 
@@ -180,9 +180,11 @@
           let nextIndex;
           switch (event.key) {
             case 'ArrowRight':
+            case 'ArrowDown':
               nextIndex = (index + 1) % composerTabs.length;
               break;
             case 'ArrowLeft':
+            case 'ArrowUp':
               nextIndex = (index - 1 + composerTabs.length) % composerTabs.length;
               break;
             case 'Home':

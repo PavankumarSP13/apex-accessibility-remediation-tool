@@ -3,8 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TextStack AI Support Portal (negative dropdown cases)</title>
+    <title>TextStack AI Support Portal (negative dropdown and dialog cases)</title>
     <link rel="stylesheet" href="styles.css" />
+    <style>
+      .composer-tab:focus {
+        outline: 3px solid #1a73e8;
+        outline-offset: 2px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .composer-tab:focus {
+        outline-color: #fff;
+      }
+
+      .custom-dropdown-list {
+        display: none;
+      }
+
+      .custom-dropdown.open > .custom-dropdown-list {
+        display: block;
+      }
+    </style>
   </head>
   <body>
     <div class="page-shell">
@@ -16,7 +36,32 @@
 
       <main class="support-card">
         <h1>TextStack AI support portal</h1>
-        <p class="subtitle">Negative test page: every dropdown below is broken in exactly one keyboard behaviour, so the dropdown keyboard scan should report each of them.</p>
+        <p class="subtitle">Negative test page: the dropdown and dialog scenarios below intentionally contain keyboard-accessibility defects for scanner validation.</p>
+
+        <div class="help-row">
+          <a class="assist-link" href="#dialog-help" id="help-link">Need help?</a>
+          <button type="button" id="open-semantics-dialog">Open dialog without semantics</button>
+          <button type="button" id="open-name-dialog">Open unnamed dialog</button>
+          <button type="button" id="open-order-dialog">Open dialog with wrong focus order</button>
+          <button type="button" id="open-arrow-dialog">Open dialog with broken arrow navigation</button>
+          <button type="button" id="open-escape-dialog">Open broken Escape dialog</button>
+          <a class="assist-link muted-link" href="#">Contact support</a>
+        </div>
+
+        <section class="field" aria-labelledby="dialog-expected-title">
+          <h2 id="dialog-expected-title">Expected dialog findings</h2>
+          <ul>
+            <li><code>dialog-modal-aria-missing</code>: the first custom modal is not marked modal.</li>
+            <li><code>dialog-focus-not-moved</code>: focus remains on the opener when the first dialog opens.</li>
+            <li><code>dialog-focus-escapes</code>: Tab and Shift+Tab reach the page behind the first modal.</li>
+            <li><code>dialog-focus-not-restored</code>: Escape closes the first dialog without restoring focus.</li>
+            <li><code>dialog-missing-semantics</code>: a visible custom modal has no dialog role or modal semantics.</li>
+            <li><code>aria-dialog-name</code>: a dialog has no accessible name.</li>
+            <li><code>dialog-focus-order-wrong</code>: positive tabindex values cause focus order to differ from DOM order.</li>
+            <li><code>dialog-arrow-focus-escapes</code>: ArrowRight moves focus outside the active dialog.</li>
+            <li><code>dialog-escape-does-not-close</code>: Escape does not close the last dialog.</li>
+          </ul>
+        </section>
 
 <!-- this changes related tab functionality-->
 
@@ -32,13 +77,13 @@
             <p><a href="#panel-maria" tabindex="-1">Maria Theresia Ahlefeldt</a> (16 January 1755 – 20 December 1810) was a Danish, (originally German), composer. She is known as the first female composer in Denmark. Maria Theresia composed music for several ballets, operas, and plays of the royal theatre. She was given good critic as a composer and described as a ‘virkelig Tonekunstnerinde’ ('a True Artist of Music').</p>
           </div>
           <div class="composer-panel" id="panel-carl" role="tabpanel" aria-labelledby="tab-carl" tabindex="-1" hidden>
-            <p>Composer profile: Carl Andersen.</p>
+            <p><a href="https://en.wikipedia.org/wiki/Carl_Joachim_Andersen">Carl Joachim Andersen</a> (29 April 1847 – 7 May 1909) was a Danish flutist, conductor, and composer born in Copenhagen, and the son of flutist Christian Joachim Andersen. He was known for his flute music and his work as a conductor and teacher.</p>
           </div>
           <div class="composer-panel" id="panel-ida" role="tabpanel" aria-labelledby="tab-ida" tabindex="-1" hidden>
-            <p>Composer profile: Ida da Fonseca.</p>
+            <p><a href="https://en.wikipedia.org/wiki/Ida_Henriette_da_Fonseca">Ida Henriette da Fonseca</a> (27 July 1802 – 6 July 1858) was a Danish opera singer and composer. She studied with Giuseppe Siboni alongside her sister Emilie and debuted at the Royal Opera in Copenhagen in 1827.</p>
           </div>
           <div class="composer-panel" id="panel-peter" role="tabpanel" aria-labelledby="tab-peter" tabindex="-1" hidden>
-            <p>Composer profile: Peter Müller.</p>
+            <p><a href="https://en.wikipedia.org/wiki/Peter_Erasmus_Lange-M%C3%BCller">Peter Erasmus Lange-Müller</a> (1 December 1850 – 26 February 1926) was a Danish composer and pianist. His compositional style was influenced by Danish folk music and the work of Robert Schumann, Johannes Brahms, and his Danish countrymen, including J.P.E. Hartmann.</p>
           </div>
         </section>
 
@@ -228,7 +273,7 @@
               <input type="hidden" name="c09-priority" value="" />
             </div>
           </div>
-          
+
 
           <div class="field">
             <p class="group-title">Tell us what is urgent</p>
@@ -288,17 +333,12 @@
             <button class="secondary-btn icon-btn" type="button" aria-label="Close dialog">X</button>
           </div>
 
-          <div class="help-row">
-            <a class="assist-link" href="#dialog-help" id="help-link">Need help?</a>
-            <a class="assist-link muted-link" href="#">Contact support</a>
-          </div>
-
           <p class="note">Demo: this page is intentionally under-accessible.</p>
         </form>
       </main>
     </div>
 
-    <div id="dialog-help" role="dialog" aria-modal="false" aria-labelledby="dialog-title" class="support-dialog">
+    <div id="dialog-help" role="dialog" aria-modal="false" aria-labelledby="dialog-title" class="support-dialog modal" style="display:none">
       <div class="dialog-panel">
         <h2 id="dialog-title">Need help?</h2>
         <p>Our support team usually replies within 1 business day.</p>
@@ -306,18 +346,216 @@
       </div>
     </div>
 
+    <div id="dialog-no-semantics" class="support-dialog modal" style="display:none">
+      <div class="dialog-panel">
+        <h2>Dialog without semantics</h2>
+        <p>This visible modal intentionally has no dialog role or modal state.</p>
+        <button type="button" class="close-semantics-btn">Close dialog</button>
+      </div>
+    </div>
+
+    <div id="dialog-no-name" role="dialog" aria-modal="true" class="support-dialog" style="display:none">
+      <div class="dialog-panel">
+        <h2>Dialog content without an accessible name</h2>
+        <p>The heading is not programmatically associated with this dialog.</p>
+        <button type="button" class="close-name-btn">Close dialog</button>
+      </div>
+    </div>
+
+    <div id="dialog-wrong-order" role="dialog" aria-modal="true" aria-labelledby="dialog-order-title" class="support-dialog" style="display:none">
+      <div class="dialog-panel">
+        <h2 id="dialog-order-title">Dialog with incorrect focus order</h2>
+        <button type="button" id="order-dom-first" tabindex="2">DOM-first control</button>
+        <button type="button" id="order-tab-first" tabindex="1">Tab-first control</button>
+      </div>
+    </div>
+
+    <div id="dialog-arrow-escape" role="dialog" aria-modal="true" aria-labelledby="dialog-arrow-title" class="support-dialog" style="display:none">
+      <div class="dialog-panel">
+        <h2 id="dialog-arrow-title">Dialog with broken arrow navigation</h2>
+        <button type="button" role="tab" id="dialog-arrow-tab" tabindex="0">Tab in dialog</button>
+        <button type="button" class="close-arrow-btn">Close dialog</button>
+      </div>
+    </div>
+
+    <div id="dialog-escape" role="dialog" aria-modal="true" aria-labelledby="dialog-escape-title" class="support-dialog" style="display:none">
+      <div class="dialog-panel">
+        <h2 id="dialog-escape-title">Escape does not close this dialog</h2>
+        <p>This modal intentionally traps Tab but ignores Escape.</p>
+        <button type="button" class="close-escape-btn">Close dialog</button>
+        <button type="button">Continue</button>
+      </div>
+    </div>
+
     <script>
+      const composerTabs = Array.from(document.querySelectorAll('.composer-tab'));
+      const composerPanels = Array.from(document.querySelectorAll('.composer-panel'));
+      document.querySelector('#panel-peter a').tabIndex = -1;
+
+      function activateComposerTab(tab, moveFocus) {
+        composerTabs.forEach(function (composerTab) {
+          const isActive = composerTab === tab;
+          composerTab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+
+        composerPanels.forEach(function (panel) {
+          panel.hidden = panel.id !== tab.getAttribute('aria-controls');
+        });
+
+        if (moveFocus) tab.focus();
+      }
+
+      composerTabs.forEach(function (tab) {
+        tab.addEventListener('focus', function () {
+          activateComposerTab(tab, false);
+        });
+
+        tab.addEventListener('click', function () {
+          activateComposerTab(tab, false);
+        });
+
+        tab.addEventListener('keydown', function (event) {
+          const currentIndex = composerTabs.indexOf(tab);
+          let nextIndex;
+
+          switch (event.key) {
+            case 'Home':
+              nextIndex = 0;
+              break;
+            case 'End':
+              nextIndex = composerTabs.length - 1;
+              break;
+            default:
+              return;
+          }
+
+          event.preventDefault();
+          activateComposerTab(composerTabs[nextIndex], true);
+        });
+      });
+
       const helpLink = document.getElementById('help-link');
       const dialog = document.getElementById('dialog-help');
       const closeBtn = document.querySelector('.close-btn');
+      const semanticsTrigger = document.getElementById('open-semantics-dialog');
+      const semanticsDialog = document.getElementById('dialog-no-semantics');
+      const nameTrigger = document.getElementById('open-name-dialog');
+      const nameDialog = document.getElementById('dialog-no-name');
+      const orderTrigger = document.getElementById('open-order-dialog');
+      const orderDialog = document.getElementById('dialog-wrong-order');
+      const arrowTrigger = document.getElementById('open-arrow-dialog');
+      const arrowDialog = document.getElementById('dialog-arrow-escape');
+      const escapeTrigger = document.getElementById('open-escape-dialog');
+      const escapeDialog = document.getElementById('dialog-escape');
+      const closeEscapeBtn = document.querySelector('.close-escape-btn');
+
+      function closeDialogOnEscape(dialogElement, trigger, closeButton) {
+        function close() {
+          dialogElement.style.display = 'none';
+          dialogElement.classList.remove('show');
+          trigger.focus();
+        }
+
+        dialogElement.addEventListener('keydown', function (event) {
+          if (event.key === 'Escape') close();
+        });
+        closeButton.addEventListener('click', close);
+      }
 
       helpLink.addEventListener('click', function (event) {
         event.preventDefault();
         dialog.style.display = 'block';
+        dialog.classList.add('show');
       });
 
       closeBtn.addEventListener('click', function () {
         dialog.style.display = 'none';
+        dialog.classList.remove('show');
+      });
+
+      dialog.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+          dialog.style.display = 'none';
+          dialog.classList.remove('show');
+        }
+      });
+
+      semanticsTrigger.addEventListener('click', function () {
+        semanticsDialog.style.display = 'block';
+        semanticsDialog.classList.add('show');
+        semanticsDialog.querySelector('button').focus();
+      });
+      closeDialogOnEscape(semanticsDialog, semanticsTrigger, document.querySelector('.close-semantics-btn'));
+
+      nameTrigger.addEventListener('click', function () {
+        nameDialog.style.display = 'block';
+        nameDialog.querySelector('button').focus();
+      });
+      closeDialogOnEscape(nameDialog, nameTrigger, document.querySelector('.close-name-btn'));
+
+      orderTrigger.addEventListener('click', function () {
+        orderDialog.style.display = 'block';
+        orderDialog.querySelector('#order-tab-first').focus();
+      });
+      orderDialog.addEventListener('keydown', function (event) {
+        if (event.key !== 'Tab') return;
+        const controls = [...orderDialog.querySelectorAll('button')];
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      });
+      closeDialogOnEscape(orderDialog, orderTrigger, orderDialog.querySelector('#order-dom-first'));
+
+      arrowTrigger.addEventListener('click', function () {
+        arrowDialog.style.display = 'block';
+        arrowDialog.querySelector('#dialog-arrow-tab').focus();
+      });
+      arrowDialog.addEventListener('keydown', function (event) {
+        if (event.key === 'Tab') {
+          const controls = [...arrowDialog.querySelectorAll('button')];
+          const first = controls[0];
+          const last = controls[controls.length - 1];
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        } else if (event.key === 'ArrowRight' && event.target.id === 'dialog-arrow-tab') {
+          document.getElementById('help-link').focus();
+        }
+      });
+      closeDialogOnEscape(arrowDialog, arrowTrigger, document.querySelector('.close-arrow-btn'));
+
+      escapeTrigger.addEventListener('click', function () {
+        escapeDialog.style.display = 'block';
+        escapeDialog.querySelector('button').focus();
+      });
+
+      escapeDialog.addEventListener('keydown', function (event) {
+        if (event.key !== 'Tab') return;
+        const controls = [...escapeDialog.querySelectorAll('button')];
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      });
+
+      closeEscapeBtn.addEventListener('click', function () {
+        escapeDialog.style.display = 'none';
+        escapeTrigger.focus();
       });
 
       // Same dropdown behaviour as the original demo; each `breaks` flag switches off one keyboard behaviour.

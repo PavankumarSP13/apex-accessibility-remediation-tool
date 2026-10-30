@@ -85,6 +85,51 @@ h1 {
   font-size: 0.98rem;
 }
 
+.composer-section {
+  margin-bottom: 24px;
+}
+
+.composer-section h2 {
+  margin: 0 0 12px;
+  color: var(--heading);
+  font-size: 1.15rem;
+}
+
+.composer-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.composer-tab {
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  padding: 9px 12px;
+  background: var(--panel-strong);
+  color: var(--text);
+}
+
+.composer-tab[aria-selected="true"] {
+  border-top: 3px solid var(--yellow);
+  padding-top: 7px;
+  background: var(--card);
+  color: var(--heading);
+}
+
+.composer-panel {
+  min-height: 120px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 0 6px 6px;
+  background: var(--card);
+  line-height: 1.55;
+}
+
+.composer-panel p {
+  margin: 0;
+}
+
 .demo-form {
   background: rgba(10, 17, 24, 0.2);
   border: 1px solid var(--border);
