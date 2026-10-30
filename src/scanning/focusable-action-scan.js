@@ -10,6 +10,14 @@ const MAX_TAB_PRESSES = 300;
 const SETTLE_MS = 600;
 const DIALOG_SETTLE_MS = 800;
 const MAX_DIALOG_TAB = 50;
+const DIALOG_FOCUSABLE_SELECTOR = [
+  'a[href]', 'area[href]', 'button:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])', 'select:not([disabled])',
+  'textarea:not([disabled])', 'iframe', 'object', 'embed',
+  'audio[controls]', 'video[controls]', 'summary',
+  '[contenteditable]:not([contenteditable="false"])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ');
  
 /**
 * ARIA APG key map — keys to press to activate each role/tag.
@@ -203,7 +211,7 @@ async function injectMutationObserver(page) {
         }
       }
     });
-    window.__fa11yObs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'aria-hidden', 'aria-checked', 'aria-expanded', 'aria-modal'] });
+    window.__fa11yObs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'open', 'aria-hidden', 'aria-checked', 'aria-expanded', 'aria-modal'] });
   });
 }
  
@@ -263,35 +271,54 @@ async function restoreFocusAfterReload(page, elementDomPath) {
  */
 export async function detectOpenDialog(page) {
   return page.evaluate(() => {
-    // 1. role=dialog or role=alertdialog that is visible
-    for (const el of document.querySelectorAll('[role="dialog"],[role="alertdialog"]')) {
-      const style = getComputedStyle(el);
-      if (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
-        return { found: true, selector: el.id ? `#${el.id}` : '[role="dialog"]' };
+    function selectorFor(el) {
+      if (el.id) return `#${CSS.escape(el.id)}`;
+      const parts = [];
+      for (let node = el; node && node !== document.body; node = node.parentElement) {
+        let part = node.tagName.toLowerCase();
+        const classes = [...node.classList].filter(Boolean).slice(0, 2);
+        if (classes.length) part += classes.map(name => `.${CSS.escape(name)}`).join('');
+        const siblings = [...node.parentElement.children].filter(sibling => sibling.tagName === node.tagName);
+        if (siblings.length > 1) part += `:nth-of-type(${siblings.indexOf(node) + 1})`;
+        parts.unshift(part);
       }
+      return `body > ${parts.join(' > ')}`;
+    }
+
+    function isVisible(el) {
+      const style = getComputedStyle(el);
+      return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+    }
+
+    // 1. role=dialog or role=alertdialog that is visible
+    for (const el of document.querySelectorAll('dialog[open],[role="dialog"],[role="alertdialog"]')) {
+      if (isVisible(el)) return { found: true, selector: selectorFor(el) };
     }
     // 2. aria-modal=true visible
     for (const el of document.querySelectorAll('[aria-modal="true"]')) {
-      const style = getComputedStyle(el);
-      if (style.display !== 'none' && style.visibility !== 'hidden') {
-        return { found: true, selector: el.id ? `#${el.id}` : '[aria-modal="true"]' };
-      }
+      if (isVisible(el)) return { found: true, selector: selectorFor(el) };
     }
     // 3. Common modal class patterns visible
     const modalSelectors = ['.modal.show', '.modal.is-open', '.modal.active', '.dialog.is-open', '.dialog.active', '[class*="modal"][class*="open"]', '[class*="dialog"][class*="open"]', '[class*="overlay"][class*="open"]', '[class*="overlay"][class*="active"]'];
     for (const sel of modalSelectors) {
       try {
-        const el = document.querySelector(sel);
-        if (el) {
-          const style = getComputedStyle(el);
-          if (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
-            return { found: true, selector: sel };
-          }
+        for (const el of document.querySelectorAll(sel)) {
+          if (isVisible(el)) return { found: true, selector: selectorFor(el) };
         }
       } catch { /* invalid selector */ }
     }
     return { found: false, selector: null };
   });
+}
+
+async function isDialogOpen(page, dialogSelector) {
+  return page.evaluate(sel => {
+    let dialog;
+    try { dialog = document.querySelector(sel); } catch { return false; }
+    if (!dialog) return false;
+    const style = getComputedStyle(dialog);
+    return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+  }, dialogSelector);
 }
  
 /**
@@ -321,31 +348,88 @@ async function scanDialogForIssues(page, dialogSelector, scanUrl) {
       }
     }
     return issues;
-  } catch {
+  }  catch (error) {
+    console.warn(`[Dialog A11y] Axe scan failed for ${dialogSelector}: ${error.message}`);
     return [];
   }
 }
  
  
 /**
-* Audit a dialog/modal for three distinct accessibility issues:
+* Audit dialog semantics, focus management, keyboard navigation, and dismissal:
 *
-*  1. dialog-focus-not-moved   — focus did NOT land inside the dialog when it opened
-*  2. dialog-element-unreachable — one or more focusable elements cannot be reached by Tab
-*  3. dialog-focus-order-wrong — Tab order does not follow the visual/DOM order
-*  4. dialog-focus-escapes      — Tab, Shift+Tab, or arrow navigation leaves the dialog
+* Checks dialog semantics, focus placement/return, keyboard reachability/order,
+* modal focus containment, Escape dismissal, and axe-detected DOM violations.
 *
 * Returns an array of issue objects ready to push into the issues list.
 */
-async function auditDialog(page, dialogSelector, scanUrl, triggerSelector, screenshotPath) {
+async function auditDialog(page, dialogSelector, scanUrl, triggerSelector, screenshotPath, triggerHandle = null) {
   const issues = [];
  
+  const semantics = await page.evaluate(sel => {
+    const container = document.querySelector(sel);
+    if (!container) return null;
+    const role = container.getAttribute('role');
+    let nativeModal = false;
+    const nativeDialog = container instanceof HTMLDialogElement;
+    if (nativeDialog && container.open) {
+      try { nativeModal = container.matches(':modal'); } catch {}
+    }
+    const customModalClass = container.matches(
+      '.modal.show, .modal.is-open, .modal.active, .dialog.is-open, .dialog.active, ' +
+      '[class*="modal"][class*="open"], [class*="dialog"][class*="open"], ' +
+      '[class*="overlay"][class*="open"], [class*="overlay"][class*="active"]'
+    );
+    return {
+      hasDialogRole: nativeDialog || role === 'dialog' || role === 'alertdialog',
+      nativeDialog,
+      isModal: container.getAttribute('aria-modal') === 'true' || nativeModal || customModalClass,
+      ariaModal: container.getAttribute('aria-modal'),
+      role,
+      html: container.outerHTML.slice(0, 200),
+    };
+  }, dialogSelector);
+  if (!semantics) return issues;
+
+  if (!semantics.hasDialogRole) {
+    issues.push({
+      ruleId: 'dialog-missing-semantics',
+      source: 'focusable-action',
+      impact: 'serious',
+      description: 'The opened dialog does not expose a dialog or alertdialog role to assistive technology.',
+      nodes: [{ html: semantics.html, target: dialogSelector, fix: 'Use a native <dialog> element or add role="dialog" (or role="alertdialog" for an urgent message) to the dialog container.' }],
+      element: semantics.html,
+      page: scanUrl,
+      triggerSelector,
+      dialogSelector,
+      screenshotPath,
+      context: 'dialog',
+    });
+  }
+
+  if ((semantics.role === 'dialog' || semantics.role === 'alertdialog')
+      && semantics.ariaModal !== 'true' && semantics.isModal && !semantics.nativeDialog) {
+    issues.push({
+      ruleId: 'dialog-modal-aria-missing',
+      source: 'focusable-action',
+      impact: 'moderate',
+      description: 'The custom modal dialog is not marked aria-modal="true".',
+      nodes: [{ html: semantics.html, target: dialogSelector, fix: 'Set aria-modal="true" on the role="dialog" element while it is modal, and ensure the background is actually inert.' }],
+      element: semantics.html,
+      page: scanUrl,
+      triggerSelector,
+      dialogSelector,
+      screenshotPath,
+      context: 'dialog',
+    });
+  }
+
   // ── 1. Was focus moved inside the dialog when it opened? ─────────────────
   const focusState = await page.evaluate((sel) => {
     const container = document.querySelector(sel);
     if (!container) return { containerFound: false };
     const active = document.activeElement;
-    const insideDialog = container.contains(active) && active !== container;
+    const insideDialog = container.contains(active);
     return {
       containerFound: true,
       insideDialog,
@@ -375,8 +459,9 @@ async function auditDialog(page, dialogSelector, scanUrl, triggerSelector, scree
       const container = document.querySelector(sel);
       if (!container) return;
       const first = container.querySelector(
-        'button:not([disabled]), a[href], input:not([disabled]):not([type="hidden"]), ' +
-        'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        'a[href], area[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), ' +
+        'select:not([disabled]), textarea:not([disabled]), iframe, object, embed, audio[controls], ' +
+        'video[controls], summary, [contenteditable]:not([contenteditable="false"]), [tabindex]:not([tabindex="-1"])'
       );
       if (first) first.focus();
       else if (container.tabIndex >= 0 || container.getAttribute('tabindex') !== null) container.focus();
@@ -400,15 +485,15 @@ async function auditDialog(page, dialogSelector, scanUrl, triggerSelector, scree
     const container = document.querySelector(sel);
     if (!container) return [];
     const candidates = container.querySelectorAll(
-      'button:not([disabled]), a[href], ' +
-      'input:not([disabled]):not([type="hidden"]), ' +
-      'select:not([disabled]), textarea:not([disabled]), ' +
-      '[tabindex]:not([tabindex="-1"])'
+      'a[href], area[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), ' +
+      'select:not([disabled]), textarea:not([disabled]), iframe, object, embed, audio[controls], ' +
+      'video[controls], summary, [contenteditable]:not([contenteditable="false"]), [tabindex]:not([tabindex="-1"])'
     );
     const results = [];
     for (const el of candidates) {
       const style = getComputedStyle(el);
-      if (style.display === 'none' || style.visibility === 'hidden') continue;
+      if (el.tabIndex < 0 || el.closest('[inert]')
+          || style.display === 'none' || style.visibility === 'hidden') continue;
       const rect = el.getBoundingClientRect();
       if (rect.width === 0 && rect.height === 0) continue;
       results.push({
@@ -419,8 +504,6 @@ async function auditDialog(page, dialogSelector, scanUrl, triggerSelector, scree
     }
     return results;
   }, dialogSelector);
- 
-  if (expectedOrder.length === 0) return issues;
  
   // Tab through and record the actual order focus lands in
   const actualOrder = [];
@@ -519,7 +602,9 @@ async function auditDialog(page, dialogSelector, scanUrl, triggerSelector, scree
  
   // Check 4: focus must remain inside a modal dialog. This catches both
   // missing focus traps and composite widgets that move focus to the page.
-  const boundaryResult = await checkDialogFocusBoundary(page, dialogSelector);
+  const boundaryResult = semantics.isModal
+    ? await checkDialogFocusBoundary(page, dialogSelector)
+    : { tabEscape: false, shiftTabEscape: false, arrowEscape: false };
   if (boundaryResult.tabEscape || boundaryResult.shiftTabEscape) {
     const direction = boundaryResult.tabEscape && boundaryResult.shiftTabEscape
       ? 'Tab and Shift+Tab'
@@ -554,34 +639,116 @@ async function auditDialog(page, dialogSelector, scanUrl, triggerSelector, scree
       context: 'dialog',
     });
   }
- 
+
+  const escapeTargetFocused = await page.evaluate(({ sel, selector }) => {
+    const container = document.querySelector(sel);
+    if (!container) return false;
+    if (container.contains(document.activeElement) && document.activeElement !== document.body) return true;
+    const firstFocusable = container.querySelector(selector);
+    if (firstFocusable) firstFocusable.focus();
+    else if (container.hasAttribute('tabindex')) container.focus();
+    return container.contains(document.activeElement) && document.activeElement !== document.body;
+  }, { sel: dialogSelector, selector: DIALOG_FOCUSABLE_SELECTOR });
+  const wasOpen = await isDialogOpen(page, dialogSelector);
+  if (wasOpen && escapeTargetFocused) {
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(DIALOG_SETTLE_MS);
+  }
+  const remainsOpen = wasOpen && escapeTargetFocused && await isDialogOpen(page, dialogSelector);
+  if (remainsOpen) {
+    issues.push({
+      ruleId: 'dialog-escape-does-not-close',
+      source: 'focusable-action',
+      impact: 'moderate',
+      description: 'Pressing Escape did not close the open dialog.',
+      nodes: [{ html: dialogSelector, target: dialogSelector, fix: 'Handle the Escape key to close the dialog and restore focus to the element that opened it.' }],
+      element: dialogSelector,
+      page: scanUrl,
+      triggerSelector,
+      dialogSelector,
+      screenshotPath,
+      context: 'dialog',
+    });
+  } else if (wasOpen && escapeTargetFocused && triggerHandle) {
+    const focusRestored = await triggerHandle.evaluate(trigger =>
+      trigger.isConnected && document.activeElement === trigger
+    ).catch(() => false);
+    if (!focusRestored) {
+      issues.push({
+        ruleId: 'dialog-focus-not-restored',
+        source: 'focusable-action',
+        impact: 'serious',
+        description: 'The dialog closed, but focus was not restored to the element that opened it.',
+        nodes: [{ html: triggerSelector || '<opening control>', target: triggerSelector || '', fix: 'When the dialog closes, return focus to its invoking control unless that control no longer exists or the user workflow has moved elsewhere.' }],
+        element: triggerSelector || '',
+        page: scanUrl,
+        triggerSelector,
+        dialogSelector,
+        screenshotPath,
+        context: 'dialog',
+      });
+    }
+  }
+
   return issues;
 }
  
 async function checkDialogFocusBoundary(page, dialogSelector) {
-  const focusables = await page.locator(`${dialogSelector} button:not([disabled]), ${dialogSelector} a[href], ${dialogSelector} input:not([disabled]):not([type="hidden"]), ${dialogSelector} select:not([disabled]), ${dialogSelector} textarea:not([disabled]), ${dialogSelector} [tabindex]:not([tabindex="-1"])`).evaluateAll(elements => elements.filter(el => {
+  const scopedFocusableSelector = DIALOG_FOCUSABLE_SELECTOR.split(',')
+    .map(selector => `${dialogSelector} ${selector.trim()}`).join(', ');
+  const focusables = await page.locator(scopedFocusableSelector).evaluateAll(elements => elements.filter(el => {
     const style = getComputedStyle(el);
     const rect = el.getBoundingClientRect();
-    return style.display !== 'none' && style.visibility !== 'hidden'
+    return el.tabIndex >= 0 && !el.closest('[inert]')
+      && style.display !== 'none' && style.visibility !== 'hidden'
       && rect.width > 0 && rect.height > 0;
   }).map(el => el.outerHTML.slice(0, 150))).catch(() => []);
-  if (focusables.length === 0) return { tabEscape: false, shiftTabEscape: false, arrowEscape: false };
- 
   const result = { tabEscape: false, shiftTabEscape: false, arrowEscape: false, activeHtml: '' };
   const isInside = () => page.evaluate(sel => {
     const container = document.querySelector(sel);
     return Boolean(container && container.contains(document.activeElement));
   }, dialogSelector);
   const activeHtml = () => page.evaluate(() => document.activeElement?.outerHTML?.slice(0, 150) || '<body>');
+  const escapesBoundary = async key => {
+    await page.keyboard.press(key);
+    if (await isInside()) return false;
+    const activeIsDocumentRoot = await page.evaluate(() =>
+      document.activeElement === document.body || document.activeElement === document.documentElement
+    );
+    if (activeIsDocumentRoot) {
+      await page.keyboard.press(key);
+      return !(await isInside());
+    }
+    return true;
+  };
  
-  await page.locator(dialogSelector).locator('button:not([disabled]), a[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])').last().focus();
-  await page.keyboard.press('Tab');
-  result.tabEscape = !(await isInside());
+  const focusBoundary = async (direction) => page.evaluate(({ sel, direction, selector }) => {
+    const container = document.querySelector(sel);
+    if (!container) return false;
+    const candidates = [...container.querySelectorAll(selector)].filter(el => {
+      const style = getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+      return el.tabIndex >= 0 && !el.closest('[inert]')
+        && style.display !== 'none' && style.visibility !== 'hidden'
+        && rect.width > 0 && rect.height > 0;
+    });
+    const target = direction === 'last' ? candidates.at(-1) : candidates[0];
+    if (!target) return false;
+    target.focus();
+    return document.activeElement === target;
+  }, { sel: dialogSelector, direction, selector: DIALOG_FOCUSABLE_SELECTOR });
+
+  const focusContainer = () => page.locator(dialogSelector).evaluate(el => {
+      el.focus();
+      return document.activeElement === el;
+    }).catch(() => false);
+  const focusedLast = focusables.length > 0 ? await focusBoundary('last') : await focusContainer();
+  if (!focusedLast) return result;
+  result.tabEscape = await escapesBoundary('Tab');
   if (result.tabEscape) result.activeHtml = await activeHtml();
- 
-  await page.locator(dialogSelector).locator('button:not([disabled]), a[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])').first().focus();
-  await page.keyboard.press('Shift+Tab');
-  result.shiftTabEscape = !(await isInside());
+
+  if (!(focusables.length > 0 ? await focusBoundary('first') : await focusContainer())) return result;
+  result.shiftTabEscape = await escapesBoundary('Shift+Tab');
   if (result.shiftTabEscape) result.activeHtml = await activeHtml();
  
   const arrowTarget = page.locator(`${dialogSelector} [role="tab"], ${dialogSelector} [role="radio"], ${dialogSelector} [role="option"], ${dialogSelector} [role="menuitem"], ${dialogSelector} [role="menuitemradio"], ${dialogSelector} [role="menuitemcheckbox"], ${dialogSelector} [role="treeitem"], ${dialogSelector} [role="gridcell"], ${dialogSelector} [role="slider"], ${dialogSelector} [role="spinbutton"], ${dialogSelector} [role="combobox"], ${dialogSelector} [role="listbox"]`).first();
@@ -594,6 +761,33 @@ async function checkDialogFocusBoundary(page, dialogSelector) {
   }
  
   return result;
+}
+
+async function inspectOpenedDialog(page, dialogState, scanUrl, triggerSelector, triggerHandle, screenshotsDir, activatedBy = null) {
+  const screenshotFilename = `dialog_${selectorToFilename(triggerSelector || dialogState.selector)}_${Date.now()}.png`;
+  const screenshotPath = path.join(screenshotsDir, screenshotFilename);
+  await page.screenshot({ path: screenshotPath, fullPage: false });
+  console.log(chalk.dim(`    Phase 3g: dialog opened${triggerSelector ? ` by ${triggerSelector}` : ''} → screenshot ${screenshotFilename}`));
+
+  const issues = await scanDialogForIssues(page, dialogState.selector, scanUrl);
+  for (const issue of issues) {
+    issue.triggerSelector = triggerSelector;
+    issue.screenshotPath = screenshotPath;
+    if (activatedBy) issue.activatedBy = activatedBy;
+  }
+  const keyboardIssues = await auditDialog(
+    page, dialogState.selector, scanUrl, triggerSelector, screenshotPath, triggerHandle
+  );
+  for (const issue of keyboardIssues) {
+    if (activatedBy) issue.activatedBy = activatedBy;
+  }
+  issues.push(...keyboardIssues);
+
+  if (await isDialogOpen(page, dialogState.selector)) {
+    await page.mouse.click(10, 10).catch(() => {});
+    await page.waitForTimeout(SETTLE_MS);
+  }
+  return { screenshotPath, issues };
 }
  
 /**
@@ -726,6 +920,16 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
     let scannedCount = 0;
     let noActionCount = 0;
     let dialogCount = 0;
+
+    const initialDialogState = await detectOpenDialog(page);
+    if (initialDialogState.found) {
+      dialogCount++;
+      const initialDialogAudit = await inspectOpenedDialog(
+        page, initialDialogState, scanUrl, null, null, screenshotsDir
+      );
+      screenshots.push(initialDialogAudit.screenshotPath);
+      issues.push(...initialDialogAudit.issues);
+    }
 
     const radioAudit = await page.evaluate(() => {
       function buildSelector(element) {
@@ -925,33 +1129,11 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
           const dialogState = await detectOpenDialog(page);
           if (dialogState.found) {
             dialogCount++;
-            const screenshotFilename = `dialog_${selectorToFilename(elInfo.selector)}_${Date.now()}.png`;
-            const dialogScreenshotPath = path.join(screenshotsDir, screenshotFilename);
-            await page.screenshot({ path: dialogScreenshotPath, fullPage: false });
-            screenshots.push(dialogScreenshotPath);
-            console.log(chalk.dim(`    Phase 3g: dialog opened by ${elInfo.selector} → screenshot ${screenshotFilename}`));
- 
-            // Axe scan + all three dialog keyboard checks (focus placement,
-            // element reachability, tab order) — all emitted as distinct issues.
-            const dialogIssues = await scanDialogForIssues(page, dialogState.selector, scanUrl);
-            for (const issue of dialogIssues) {
-              issue.triggerSelector = elInfo.selector;
-              issue.screenshotPath = dialogScreenshotPath;
-              issues.push(issue);
-            }
-            const dialogKeyboardIssues = await auditDialog(page, dialogState.selector, scanUrl, elInfo.selector, dialogScreenshotPath);
-            issues.push(...dialogKeyboardIssues);
- 
-            // Close the dialog
-            await page.keyboard.press('Escape');
-            await page.waitForTimeout(DIALOG_SETTLE_MS);
- 
-            // If still open, try clicking outside
-            const stillOpen = await detectOpenDialog(page);
-            if (stillOpen.found) {
-              await page.mouse.click(10, 10).catch(() => {});
-              await page.waitForTimeout(SETTLE_MS);
-            }
+            const dialogAudit = await inspectOpenedDialog(
+              page, dialogState, scanUrl, elInfo.selector, activeHandle, screenshotsDir
+            );
+            screenshots.push(dialogAudit.screenshotPath);
+            issues.push(...dialogAudit.issues);
           }
  
           break; // mutation observed — no need to try next key
@@ -1007,32 +1189,11 @@ export async function phase3g_focusableAction(scanUrl, outputDir) {
               const dialogState = await detectOpenDialog(page);
               if (dialogState.found) {
                 dialogCount++;
-                const screenshotFilename = `dialog_${selectorToFilename(elInfo.selector)}_${Date.now()}.png`;
-                const dialogScreenshotPath = path.join(screenshotsDir, screenshotFilename);
-                await page.screenshot({ path: dialogScreenshotPath, fullPage: false });
-                screenshots.push(dialogScreenshotPath);
-                console.log(chalk.dim(`    Phase 3g: dialog opened by click fallback on ${elInfo.selector} → screenshot ${screenshotFilename}`));
- 
-                const dialogIssues = await scanDialogForIssues(page, dialogState.selector, scanUrl);
-                for (const issue of dialogIssues) {
-                  issue.triggerSelector = elInfo.selector;
-                  issue.screenshotPath = dialogScreenshotPath;
-                  issue.activatedBy = 'click-fallback';
-                  issues.push(issue);
-                }
-                const dialogKeyboardIssues = await auditDialog(page, dialogState.selector, scanUrl, elInfo.selector, dialogScreenshotPath);
-                for (const issue of dialogKeyboardIssues) {
-                  issue.activatedBy = 'click-fallback';
-                  issues.push(issue);
-                }
- 
-                await page.keyboard.press('Escape');
-                await page.waitForTimeout(DIALOG_SETTLE_MS);
-                const stillOpen = await detectOpenDialog(page);
-                if (stillOpen.found) {
-                  await page.mouse.click(10, 10).catch(() => {});
-                  await page.waitForTimeout(SETTLE_MS);
-                }
+                const dialogAudit = await inspectOpenedDialog(
+                  page, dialogState, scanUrl, elInfo.selector, activeHandle, screenshotsDir, 'click-fallback'
+                );
+                screenshots.push(dialogAudit.screenshotPath);
+                issues.push(...dialogAudit.issues);
               }
             }
           }
