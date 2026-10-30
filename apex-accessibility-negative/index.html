@@ -5,6 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TextStack AI Support Portal (negative dropdown cases)</title>
     <link rel="stylesheet" href="styles.css" />
+    <style>
+      .composer-tab:focus {
+        outline: 3px solid #1a73e8;
+        outline-offset: 2px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .composer-tab:focus {
+        outline-color: #fff;
+      }
+    </style>
   </head>
   <body>
     <div class="page-shell">
@@ -32,13 +44,13 @@
             <p><a href="#panel-maria" tabindex="-1">Maria Theresia Ahlefeldt</a> (16 January 1755 – 20 December 1810) was a Danish, (originally German), composer. She is known as the first female composer in Denmark. Maria Theresia composed music for several ballets, operas, and plays of the royal theatre. She was given good critic as a composer and described as a ‘virkelig Tonekunstnerinde’ ('a True Artist of Music').</p>
           </div>
           <div class="composer-panel" id="panel-carl" role="tabpanel" aria-labelledby="tab-carl" tabindex="-1" hidden>
-            <p>Composer profile: Carl Andersen.</p>
+            <p><a href="https://en.wikipedia.org/wiki/Carl_Joachim_Andersen">Carl Joachim Andersen</a> (29 April 1847 – 7 May 1909) was a Danish flutist, conductor, and composer born in Copenhagen, and the son of flutist Christian Joachim Andersen. He was known for his flute music and his work as a conductor and teacher.</p>
           </div>
           <div class="composer-panel" id="panel-ida" role="tabpanel" aria-labelledby="tab-ida" tabindex="-1" hidden>
-            <p>Composer profile: Ida da Fonseca.</p>
+            <p><a href="https://en.wikipedia.org/wiki/Ida_Henriette_da_Fonseca">Ida Henriette da Fonseca</a> (27 July 1802 – 6 July 1858) was a Danish opera singer and composer. She studied with Giuseppe Siboni alongside her sister Emilie and debuted at the Royal Opera in Copenhagen in 1827.</p>
           </div>
           <div class="composer-panel" id="panel-peter" role="tabpanel" aria-labelledby="tab-peter" tabindex="-1" hidden>
-            <p>Composer profile: Peter Müller.</p>
+            <p><a href="https://en.wikipedia.org/wiki/Peter_Erasmus_Lange-M%C3%BCller">Peter Erasmus Lange-Müller</a> (1 December 1850 – 26 February 1926) was a Danish composer and pianist. His compositional style was influenced by Danish folk music and the work of Robert Schumann, Johannes Brahms, and his Danish countrymen, including J.P.E. Hartmann.</p>
           </div>
         </section>
 
@@ -333,6 +345,52 @@
     </div>
 
     <script>
+      const composerTabs = Array.from(document.querySelectorAll('.composer-tab'));
+      const composerPanels = Array.from(document.querySelectorAll('.composer-panel'));
+      document.querySelector('#panel-peter a').tabIndex = -1;
+
+      function activateComposerTab(tab, moveFocus) {
+        composerTabs.forEach(function (composerTab) {
+          const isActive = composerTab === tab;
+          composerTab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+
+        composerPanels.forEach(function (panel) {
+          panel.hidden = panel.id !== tab.getAttribute('aria-controls');
+        });
+
+        if (moveFocus) tab.focus();
+      }
+
+      composerTabs.forEach(function (tab) {
+        tab.addEventListener('focus', function () {
+          activateComposerTab(tab, false);
+        });
+
+        tab.addEventListener('click', function () {
+          activateComposerTab(tab, false);
+        });
+
+        tab.addEventListener('keydown', function (event) {
+          const currentIndex = composerTabs.indexOf(tab);
+          let nextIndex;
+
+          switch (event.key) {
+            case 'Home':
+              nextIndex = 0;
+              break;
+            case 'End':
+              nextIndex = composerTabs.length - 1;
+              break;
+            default:
+              return;
+          }
+
+          event.preventDefault();
+          activateComposerTab(composerTabs[nextIndex], true);
+        });
+      });
+
       const helpLink = document.getElementById('help-link');
       const dialog = document.getElementById('dialog-help');
       const closeBtn = document.querySelector('.close-btn');
